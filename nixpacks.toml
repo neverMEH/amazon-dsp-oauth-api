@@ -1,11 +1,9 @@
 # Nixpacks configuration for Railway deployment
-# Updated: Force fresh build with proper Python setup
-[providers]
-python = "3.11"
+# Fixed: Correct providers syntax
+providers = ["python"]
 
 [phases.setup]
 nixPkgs = ["python311", "python311Packages.pip", "python311Packages.setuptools", "gcc"]
-aptPkgs = ["gcc", "g++", "make"]
 
 [phases.install]
 dependsOn = ["setup"]
@@ -15,10 +13,6 @@ cmds = [
     "python -m pip install --upgrade pip setuptools wheel",
     "cd backend && python -m pip install -r requirements.txt"
 ]
-
-[phases.build]
-dependsOn = ["install"]
-cmds = ["echo 'Build complete'"]
 
 [start]
 cmd = "cd backend && python -m uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"
