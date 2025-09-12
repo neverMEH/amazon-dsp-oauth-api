@@ -1,13 +1,14 @@
 # Nixpacks configuration for Railway deployment
-# Simplified configuration - let Nixpacks auto-detect Python
+# Using python311Packages.pip to ensure pip is available
 
 [phases.setup]
-nixPkgs = ["python311", "gcc"]
+nixPkgs = ["python311", "python311Packages.pip", "gcc"]
 
 [phases.install]
 cmds = [
-    "cd backend && pip install -r requirements.txt"
+    "python -m venv /opt/venv",
+    ". /opt/venv/bin/activate && cd backend && pip install -r requirements.txt"
 ]
 
 [start]
-cmd = "cd backend && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"
+cmd = ". /opt/venv/bin/activate && cd backend && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"
