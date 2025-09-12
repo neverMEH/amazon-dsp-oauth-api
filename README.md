@@ -2,6 +2,8 @@
 
 OAuth 2.0 authentication service for Amazon DSP Campaign Insights API with automatic token refresh and Next.js testing dashboard.
 
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/deploy)
+
 ## 🚀 Quick Start
 
 ### Prerequisites

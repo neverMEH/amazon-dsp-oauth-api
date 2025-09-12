@@ -1,4 +1,5 @@
 # Nixpacks configuration for Railway deployment
+# Updated: Force fresh build with proper Python setup
 [providers]
 python = "3.11"
 
