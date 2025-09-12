@@ -1,7 +1,7 @@
 # Core Dependencies
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
-httpx==0.25.2
+httpx==0.24.1
 cryptography==41.0.7
 
 # Database
