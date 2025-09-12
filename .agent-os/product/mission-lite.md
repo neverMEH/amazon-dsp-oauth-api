@@ -1,0 +1,5 @@
+# Product Mission (Lite)
+
+Amazon Ads Reporting Platform is a comprehensive analytics and reporting solution that helps advertising professionals and brands gain deep insights into their Amazon advertising performance by providing automated OAuth authentication, DSP campaign insights, and AMC reporting capabilities through a unified dashboard.
+
+The platform serves advertising consultants and brand managers who need efficient, automated reporting across Amazon's advertising ecosystem. Unlike manual implementations that require constant token management and API expertise, this solution provides zero-maintenance authentication with military-grade encryption, seamlessly integrating DSP Campaign Insights, AMC Administration, and AMC Reporting APIs to deliver 75% faster report generation while maintaining complete data sovereignty through local-first architecture.

@@ -1,0 +1,3 @@
+# Spec Summary (Lite)
+
+Establish a secure, production-ready OAuth 2.0 authentication system for Amazon DSP Campaign Insights API with automated token management using Fernet encryption and Supabase storage. The single-user system features automatic token refresh via FastAPI background tasks, modular architecture, and Railway deployment with zero-maintenance operation ensuring uninterrupted API access.

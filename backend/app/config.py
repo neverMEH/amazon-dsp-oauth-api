@@ -1,0 +1,59 @@
+"""
+Application configuration
+"""
+from pydantic_settings import BaseSettings
+from typing import Optional
+import os
+from pathlib import Path
+
+# Get the project root directory
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+
+
+class Settings(BaseSettings):
+    """Application settings"""
+    
+    # Amazon OAuth
+    amazon_security_profile_id: str
+    amazon_client_id: str
+    amazon_client_secret: str
+    amazon_oauth_redirect_uri: str = "http://localhost:8000/api/v1/auth/amazon/callback"
+    amazon_scope: str = "advertising::campaign_management"
+    
+    # Encryption
+    fernet_key: str
+    
+    # Supabase
+    supabase_url: str
+    supabase_key: str
+    
+    # Application
+    environment: str = "development"
+    frontend_url: str = "http://localhost:3000"
+    backend_url: str = "http://localhost:8000"
+    admin_key: str = "dev_admin_key"
+    
+    # Server
+    port: int = 8000
+    
+    # OAuth URLs
+    amazon_auth_url: str = "https://www.amazon.com/ap/oa"
+    amazon_token_url: str = "https://api.amazon.com/auth/o2/token"
+    
+    # Token settings
+    token_refresh_interval: int = 60  # seconds
+    token_refresh_buffer: int = 300  # seconds before expiry to trigger refresh
+    max_refresh_retries: int = 5
+    retry_backoff_base: int = 2
+    
+    # API Version
+    api_version: str = "1.0.0"
+    
+    class Config:
+        env_file = BASE_DIR / ".env"
+        env_file_encoding = 'utf-8'
+        case_sensitive = False
+
+
+# Create settings instance
+settings = Settings()
