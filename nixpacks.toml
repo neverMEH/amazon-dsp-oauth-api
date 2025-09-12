@@ -1,16 +1,13 @@
 # Nixpacks configuration for Railway deployment
-# Fixed: Correct providers syntax
-providers = ["python"]
+# Simplified configuration - let Nixpacks auto-detect Python
 
 [phases.setup]
-nixPkgs = ["python311", "python311Packages.pip", "python311Packages.setuptools", "gcc"]
+nixPkgs = ["python311", "gcc"]
 
 [phases.install]
-dependsOn = ["setup"]
 cmds = [
-    "python --version",
     "cd backend && pip install -r requirements.txt"
 ]
 
 [start]
-cmd = "cd backend && python -m uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"
+cmd = "cd backend && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"
