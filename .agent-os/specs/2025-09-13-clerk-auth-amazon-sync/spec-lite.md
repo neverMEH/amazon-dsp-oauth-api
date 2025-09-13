@@ -1,0 +1,3 @@
+# Spec Summary (Lite)
+
+Implement Clerk authentication with Supabase integration to provide secure user login and enable Amazon Advertising API account synchronization through a dashboard interface. Users can authenticate via Clerk, access a protected dashboard with a profile dropdown menu, and connect multiple Amazon advertising accounts to track and manage OAuth refresh tokens. The system establishes user-specific account management with secure token storage and automated refresh capabilities.

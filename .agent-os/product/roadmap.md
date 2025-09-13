@@ -30,6 +30,27 @@
 - Railway deployment environment
 - Environment variables (Client ID, Secret, Fernet Key)
 
+## Phase 1.5: User Authentication & Account Management
+
+**Goal:** Implement Clerk authentication with user-specific dashboards and Amazon account synchronization
+**Success Criteria:** Users can securely login, connect multiple Amazon Advertising accounts, and manage OAuth tokens per account
+**Spec:** @.agent-os/specs/2025-09-13-clerk-auth-amazon-sync/spec.md
+
+### Features
+
+- [ ] Clerk authentication integration - User login/signup with Supabase sync `M`
+- [ ] Protected dashboard routes - User-specific data isolation `S`
+- [ ] Profile dropdown component - Header navigation with account access `S`
+- [ ] Amazon account synchronization - OAuth flow for multiple accounts `M`
+- [ ] Account management interface - View and manage connected accounts `M`
+- [ ] Per-user token storage - Isolated refresh tokens for each account `S`
+
+### Dependencies
+
+- Phase 1 completion (OAuth foundation)
+- Clerk account setup
+- Database schema updates for user relationships
+
 ## Phase 2: DSP Campaign Insights Integration
 
 **Goal:** Connect to DSP Campaign Insights API and retrieve campaign performance data
@@ -46,7 +67,7 @@
 
 ### Dependencies
 
-- Phase 1 completion (OAuth authentication)
+- Phase 1.5 completion (User authentication)
 - DSP advertiser account access
 - Frontend deployment on Railway
 
@@ -130,10 +151,11 @@
 ## Timeline Estimates
 
 - **Phase 1:** ~~2-3 weeks~~ **✅ Completed in 1 day** (Foundation)
-- **Phase 2:** 3-4 weeks (DSP Integration) - **Ready to begin**
+- **Phase 1.5:** 2-3 weeks (User Authentication) - **Ready to begin**
+- **Phase 2:** 3-4 weeks (DSP Integration)
 - **Phase 3:** 4-6 weeks (AMC Implementation)
 - **Phase 4:** 3-4 weeks (Automation)
 - **Phase 5:** 4-6 weeks (Enterprise Scale)
 
-**Total Estimated Timeline:** 16-23 weeks for full platform deployment
-**Current Status:** Phase 1 Complete, Ready for Phase 2
+**Total Estimated Timeline:** 18-26 weeks for full platform deployment
+**Current Status:** Phase 1 Complete, Ready for Phase 1.5
