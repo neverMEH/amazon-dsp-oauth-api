@@ -21,7 +21,7 @@ class AmazonOAuthClient:
         """Initialize OAuth client"""
         self.client_id = settings.amazon_client_id
         self.client_secret = settings.amazon_client_secret
-        self.redirect_uri = settings.amazon_oauth_redirect_uri
+        self.redirect_uri = settings.amazon_redirect_uri
         self.scope = settings.amazon_scope
         self.auth_url = settings.amazon_auth_url
         self.token_url = settings.amazon_token_url

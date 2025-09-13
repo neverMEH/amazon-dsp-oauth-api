@@ -62,7 +62,7 @@ async def login():
         # Store state token
         await token_service.store_state_token(
             state_token,
-            settings.amazon_oauth_redirect_uri
+            settings.amazon_redirect_uri
         )
         
         return LoginResponse(

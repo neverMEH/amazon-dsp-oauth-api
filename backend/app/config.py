@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     amazon_security_profile_id: str
     amazon_client_id: str
     amazon_client_secret: str
-    amazon_oauth_redirect_uri: str = "http://localhost:8000/api/v1/auth/amazon/callback"
+    amazon_oauth_redirect_uri: Optional[str] = None
     amazon_scope: str = "advertising::campaign_management"
     
     # Encryption
@@ -31,6 +31,13 @@ class Settings(BaseSettings):
     environment: str = "development"
     frontend_url: str = "http://localhost:3000"
     backend_url: str = "http://localhost:8000"
+    
+    @property
+    def amazon_redirect_uri(self) -> str:
+        """Get the redirect URI, defaulting to backend_url if not set"""
+        if self.amazon_oauth_redirect_uri:
+            return self.amazon_oauth_redirect_uri
+        return f"{self.backend_url}/api/v1/auth/amazon/callback"
     admin_key: str = "dev_admin_key"
     
     # Server
