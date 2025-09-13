@@ -16,7 +16,7 @@ export function OAuthCallback() {
 
   useEffect(() => {
     const handleCallback = async () => {
-      const code = searchParams.get('code');
+      const success = searchParams.get('success');
       const state = searchParams.get('state');
       const error = searchParams.get('error');
       const errorDescription = searchParams.get('error_description');
@@ -27,37 +27,45 @@ export function OAuthCallback() {
         return;
       }
 
+      // Check if this is a success redirect from backend
+      if (success === 'true') {
+        setStatus('success');
+        
+        // Fetch the stored tokens from the backend
+        try {
+          const response = await fetch('/api/v1/auth/status');
+          const data = await response.json();
+          
+          if (data.is_authenticated) {
+            // Store token info for display
+            sessionStorage.setItem('tokenInfo', JSON.stringify(data));
+            sessionStorage.removeItem('oauth_state');
+            
+            // Redirect to dashboard after a short delay
+            setTimeout(() => {
+              navigate('/dashboard');
+            }, 1500);
+          } else {
+            setStatus('error');
+            setError('Authentication succeeded but no tokens found');
+          }
+        } catch (err) {
+          setStatus('error');
+          setError('Failed to retrieve token information');
+        }
+        return;
+      }
+
+      // Legacy flow - should not reach here with new backend
+      const code = searchParams.get('code');
       if (!code) {
         setStatus('error');
         setError('No authorization code received');
         return;
       }
 
-      // Verify state for CSRF protection
-      const savedState = sessionStorage.getItem('oauth_state');
-      if (state && state !== savedState) {
-        setStatus('error');
-        setError('Invalid state parameter - possible CSRF attack');
-        return;
-      }
-
-      try {
-        const tokens = await api.handleCallback(code, state || undefined);
-        
-        // Store tokens in session storage
-        sessionStorage.setItem('tokens', JSON.stringify(tokens));
-        sessionStorage.removeItem('oauth_state');
-        
-        setStatus('success');
-        
-        // Redirect to dashboard after a short delay
-        setTimeout(() => {
-          navigate('/dashboard', { state: { tokens } });
-        }, 1500);
-      } catch (err) {
-        setStatus('error');
-        setError(err instanceof Error ? err.message : 'Failed to exchange code for tokens');
-      }
+      setStatus('error');
+      setError('Invalid callback parameters');
     };
 
     handleCallback();

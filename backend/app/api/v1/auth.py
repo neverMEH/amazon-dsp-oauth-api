@@ -2,7 +2,7 @@
 OAuth authentication endpoints
 """
 from fastapi import APIRouter, Query, Header, HTTPException, Depends
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from typing import Optional
 from datetime import datetime, timezone
 import structlog
@@ -131,9 +131,10 @@ async def callback(
         # Store encrypted tokens
         stored_token = await token_service.store_tokens(token_data)
         
-        # Return the actual tokens for the frontend
-        # The frontend needs these to display in the dashboard
-        return token_data
+        # Redirect to frontend callback handler with success
+        # The frontend will handle displaying the tokens
+        frontend_callback_url = f"{settings.frontend_url}/callback?success=true&state={state}"
+        return RedirectResponse(url=frontend_callback_url, status_code=302)
         
     except OAuthException as e:
         raise HTTPException(
