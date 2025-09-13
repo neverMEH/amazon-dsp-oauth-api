@@ -78,7 +78,7 @@ export function AuthDashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {authStatus?.is_authenticated ? (
+            {authStatus?.authenticated ? (
               <>
                 <Alert className="border-green-500 bg-green-50 dark:bg-green-950">
                   <CheckCircle className="h-4 w-4 text-green-600" />
@@ -88,11 +88,6 @@ export function AuthDashboard() {
                 </Alert>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="p-4 bg-muted rounded-lg">
-                    <div className="text-sm text-muted-foreground mb-1">Token ID</div>
-                    <div className="font-mono text-xs">{authStatus.token_id}</div>
-                  </div>
-                  
                   <div className="p-4 bg-muted rounded-lg">
                     <div className="text-sm text-muted-foreground mb-1">Scope</div>
                     <Badge variant="secondary">{authStatus.scope}</Badge>
@@ -105,8 +100,8 @@ export function AuthDashboard() {
                   
                   <div className="p-4 bg-muted rounded-lg">
                     <div className="text-sm text-muted-foreground mb-1">Status</div>
-                    <Badge variant={authStatus.is_valid ? 'default' : 'destructive'}>
-                      {authStatus.is_valid ? 'Valid' : 'Expired'}
+                    <Badge variant={authStatus.token_valid ? 'default' : 'destructive'}>
+                      {authStatus.token_valid ? 'Valid' : 'Expired'}
                     </Badge>
                   </div>
                 </div>
