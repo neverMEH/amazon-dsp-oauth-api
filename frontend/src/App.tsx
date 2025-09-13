@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { OAuthLogin } from '@/components/OAuthLogin';
 import { OAuthCallback } from '@/components/OAuthCallback';
 import { TokenDashboard } from '@/components/TokenDashboard';
+import { ConnectionStatusDemo } from '@/pages/ConnectionStatusDemo';
 import { ThemeProvider } from '@/components/theme-provider';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { ErrorBoundary } from '@/components/error-boundary';
@@ -48,6 +49,7 @@ function App() {
                   )
                 } 
               />
+              <Route path="/status-demo" element={<ConnectionStatusDemo />} />
             </Routes>
           </Router>
           

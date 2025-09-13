@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { api, TokenResponse } from '@/services/api';
 import { cn } from '@/lib/utils';
+import { ConnectionStatus } from '@/components/ConnectionStatus';
 
 interface TokenDashboardProps {
   tokens: TokenResponse;
@@ -159,6 +160,9 @@ export function TokenDashboard({ tokens: initialTokens }: TokenDashboardProps) {
               Your Amazon DSP OAuth tokens have been retrieved successfully.
             </AlertDescription>
           </Alert>
+
+          {/* Connection Status Component */}
+          <ConnectionStatus className="mb-6" />
 
           <Card className="shadow-lg">
             <CardHeader>
