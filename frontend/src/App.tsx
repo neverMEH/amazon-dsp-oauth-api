@@ -1,54 +1,136 @@
-import { useEffect, useState } from 'react';
+import { ClerkProvider, SignedIn, SignedOut } from '@clerk/clerk-react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Dashboard } from '@/components/Dashboard';
+import { SignInPage } from '@/pages/SignIn';
+import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { ThemeProvider } from '@/components/theme-provider';
+import { ThemeToggle } from '@/components/theme-toggle';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { Toaster } from '@/components/ui/toaster';
+
+// Legacy components for backward compatibility
 import { OAuthLogin } from '@/components/OAuthLogin';
 import { OAuthCallback } from '@/components/OAuthCallback';
 import { TokenDashboard } from '@/components/TokenDashboard';
 import { AuthDashboard } from '@/components/AuthDashboard';
 import { ConnectionStatusDemo } from '@/pages/ConnectionStatusDemo';
-import { ThemeProvider } from '@/components/theme-provider';
-import { ThemeToggle } from '@/components/theme-toggle';
-import { ErrorBoundary } from '@/components/error-boundary';
-import { Toaster } from '@/components/ui/toaster';
-import { TokenResponse } from '@/services/api';
+
+// Import your publishable key
+const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
+
+if (!PUBLISHABLE_KEY) {
+  throw new Error("Missing Publishable Key")
+}
 
 function App() {
-  const [tokens, setTokens] = useState<TokenResponse | null>(null);
-
-  useEffect(() => {
-    // Check for stored tokens on mount
-    const storedTokens = sessionStorage.getItem('tokens');
-    if (storedTokens) {
-      try {
-        setTokens(JSON.parse(storedTokens));
-      } catch (error) {
-        console.error('Failed to parse stored tokens:', error);
-        sessionStorage.removeItem('tokens');
-      }
-    }
-  }, []);
-
   return (
-    <ErrorBoundary>
-      <ThemeProvider defaultTheme="system" storageKey="amazon-dsp-theme">
-        <div className="relative">
-          {/* Global Theme Toggle */}
-          <div className="fixed top-4 right-4 z-50">
-            <ThemeToggle />
+    <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
+      <ErrorBoundary>
+        <ThemeProvider defaultTheme="system" storageKey="amazon-dsp-theme">
+          <div className="relative">
+            {/* Global Theme Toggle - Only show when signed in */}
+            <SignedIn>
+              <div className="fixed top-4 right-20 z-50">
+                <ThemeToggle />
+              </div>
+            </SignedIn>
+            
+            <Router>
+              <Routes>
+                {/* Public routes */}
+                <Route 
+                  path="/" 
+                  element={
+                    <>
+                      <SignedOut>
+                        <Navigate to="/sign-in" replace />
+                      </SignedOut>
+                      <SignedIn>
+                        <Navigate to="/dashboard" replace />
+                      </SignedIn>
+                    </>
+                  } 
+                />
+                <Route 
+                  path="/sign-in" 
+                  element={
+                    <>
+                      <SignedOut>
+                        <SignInPage />
+                      </SignedOut>
+                      <SignedIn>
+                        <Navigate to="/dashboard" replace />
+                      </SignedIn>
+                    </>
+                  } 
+                />
+
+                {/* Protected routes */}
+                <Route 
+                  path="/dashboard" 
+                  element={
+                    <ProtectedRoute>
+                      <Dashboard />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/accounts" 
+                  element={
+                    <ProtectedRoute>
+                      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 dark:from-slate-900 dark:to-slate-800 p-6">
+                        <div className="max-w-4xl mx-auto">
+                          <h1 className="text-3xl font-bold mb-6">Account Management</h1>
+                          <p className="text-muted-foreground">Manage your Amazon DSP accounts here.</p>
+                        </div>
+                      </div>
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/settings" 
+                  element={
+                    <ProtectedRoute>
+                      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 dark:from-slate-900 dark:to-slate-800 p-6">
+                        <div className="max-w-4xl mx-auto">
+                          <h1 className="text-3xl font-bold mb-6">Settings</h1>
+                          <p className="text-muted-foreground">Configure your application settings.</p>
+                        </div>
+                      </div>
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/profile" 
+                  element={
+                    <ProtectedRoute>
+                      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 dark:from-slate-900 dark:to-slate-800 p-6">
+                        <div className="max-w-4xl mx-auto">
+                          <h1 className="text-3xl font-bold mb-6">User Profile</h1>
+                          <p className="text-muted-foreground">View and edit your profile information.</p>
+                        </div>
+                      </div>
+                    </ProtectedRoute>
+                  } 
+                />
+
+                {/* Legacy routes for backward compatibility */}
+                <Route path="/oauth-login" element={<OAuthLogin />} />
+                <Route path="/callback" element={<OAuthCallback />} />
+                <Route path="/token-dashboard" element={<TokenDashboard />} />
+                <Route path="/auth-dashboard" element={<AuthDashboard />} />
+                <Route path="/status-demo" element={<ConnectionStatusDemo />} />
+
+                {/* Catch all route */}
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </Router>
+            
+            <Toaster />
           </div>
-          
-          <Router>
-            <Routes>
-              <Route path="/" element={<OAuthLogin />} />
-              <Route path="/callback" element={<OAuthCallback />} />
-              <Route path="/dashboard" element={<AuthDashboard />} />
-              <Route path="/status-demo" element={<ConnectionStatusDemo />} />
-            </Routes>
-          </Router>
-          
-          <Toaster />
-        </div>
-      </ThemeProvider>
-    </ErrorBoundary>
+        </ThemeProvider>
+      </ErrorBoundary>
+    </ClerkProvider>
   );
 }
 
