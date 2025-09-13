@@ -65,6 +65,18 @@ class ApiService {
     return response.json();
   }
 
+  async getAuthStatus() {
+    const url = API_BASE_URL ? `${API_BASE_URL}/api/v1/auth/status` : '/api/v1/auth/status';
+    const response = await fetch(url, {
+      credentials: 'include'
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Failed to get auth status' }));
+      throw new Error(error.detail || 'Failed to get auth status');
+    }
+    return response.json();
+  }
+
   decodeToken(token: string): any {
     try {
       const base64Url = token.split('.')[1];
