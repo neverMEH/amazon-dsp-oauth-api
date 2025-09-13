@@ -36,7 +36,7 @@ export function OAuthCallback() {
           const response = await fetch('/api/v1/auth/status');
           const data = await response.json();
           
-          if (data.is_authenticated) {
+          if (data.authenticated) {
             // Store token info for display
             sessionStorage.setItem('tokenInfo', JSON.stringify(data));
             sessionStorage.removeItem('oauth_state');
