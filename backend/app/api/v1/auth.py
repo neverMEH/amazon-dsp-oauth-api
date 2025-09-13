@@ -133,17 +133,9 @@ async def callback(
         # Store encrypted tokens
         stored_token = await token_service.store_tokens(token_data)
         
-        # Return success response
-        return CallbackResponse(
-            status="success",
-            message="Authentication successful",
-            token_info=TokenInfo(
-                token_id=stored_token["id"],
-                expires_at=stored_token["expires_at"],
-                scope=stored_token["scope"],
-                refresh_count=0
-            )
-        )
+        # Return the actual tokens for the frontend
+        # The frontend needs these to display in the dashboard
+        return token_data
         
     except OAuthException as e:
         raise HTTPException(
