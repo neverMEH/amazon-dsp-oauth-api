@@ -2,7 +2,7 @@
 Token management service
 """
 from typing import Optional, Dict, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import structlog
 from supabase import Client
 
@@ -32,7 +32,7 @@ class TokenService:
             Stored state record
         """
         try:
-            expires_at = (datetime.utcnow() + timedelta(minutes=10)).isoformat()
+            expires_at = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
             
             data = {
                 "state_token": state_token,
@@ -74,8 +74,9 @@ class TokenService:
             
             # Check if expired
             expires_at = datetime.fromisoformat(state_record["expires_at"].replace("Z", "+00:00"))
-            if expires_at < datetime.utcnow():
-                logger.warning("State token expired", state_token=state_token[:10] + "...")
+            now = datetime.now(timezone.utc)
+            if expires_at < now:
+                logger.warning("State token expired", state_token=state_token[:10] + "...", expires_at=expires_at, now=now)
                 return False
             
             # Mark as used
@@ -221,9 +222,9 @@ class TokenService:
                 "access_token": encrypted_access,
                 "refresh_token": encrypted_refresh,
                 "expires_at": new_token_data["expires_at"],
-                "last_refresh_at": datetime.utcnow().isoformat(),
+                "last_refresh_at": datetime.now(timezone.utc).isoformat(),
                 "refresh_count": current_count + 1,
-                "updated_at": datetime.utcnow().isoformat()
+                "updated_at": datetime.now(timezone.utc).isoformat()
             }
             
             result = self.db.table("oauth_tokens").update(update_data).eq(
