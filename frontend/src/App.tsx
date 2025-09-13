@@ -117,7 +117,13 @@ function App() {
                 {/* Legacy routes for backward compatibility */}
                 <Route path="/oauth-login" element={<OAuthLogin />} />
                 <Route path="/callback" element={<OAuthCallback />} />
-                <Route path="/token-dashboard" element={<TokenDashboard tokens={{}} />} />
+                <Route path="/token-dashboard" element={<TokenDashboard tokens={{
+                  access_token: '',
+                  refresh_token: '',
+                  expires_in: 0,
+                  scope: '',
+                  token_type: ''
+                }} />} />
                 <Route path="/auth-dashboard" element={<AuthDashboard />} />
                 <Route path="/status-demo" element={<ConnectionStatusDemo />} />
 
