@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     amazon_client_id: str
     amazon_client_secret: str
     amazon_oauth_redirect_uri: Optional[str] = None
-    amazon_scope: str = "advertising::campaign_management"
+    amazon_scope: str = "advertising::campaign_management advertising::account_management advertising::dsp_campaigns advertising::reporting"
     
     # Encryption
     fernet_key: str

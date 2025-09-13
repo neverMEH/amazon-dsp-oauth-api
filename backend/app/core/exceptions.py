@@ -91,3 +91,50 @@ class EncryptionError(OAuthException):
             status_code=500,
             details={"operation": operation}
         )
+
+
+class AccountAccessError(OAuthException):
+    """Raised when account access fails"""
+    
+    def __init__(self, operation: str, account_id: Optional[str] = None):
+        super().__init__(
+            message=f"Account access failed: {operation}",
+            code="ACCOUNT_ACCESS_ERROR",
+            status_code=403,
+            details={"operation": operation, "account_id": account_id}
+        )
+
+
+class DSPPermissionError(OAuthException):
+    """Raised when DSP access is denied"""
+    
+    def __init__(self, profile_id: str):
+        super().__init__(
+            message=f"DSP access denied for profile {profile_id}. Ensure proper permissions.",
+            code="DSP_PERMISSION_DENIED",
+            status_code=403,
+            details={"profile_id": profile_id}
+        )
+
+
+class APIQuotaExceededError(OAuthException):
+    """Raised when API quota is exceeded"""
+    
+    def __init__(self, quota_type: str, reset_time: Optional[str] = None):
+        super().__init__(
+            message=f"API quota exceeded: {quota_type}",
+            code="QUOTA_EXCEEDED",
+            status_code=429,
+            details={"quota_type": quota_type, "reset_time": reset_time}
+        )
+
+class AmazonAuthError(OAuthException):
+    """Raised when Amazon authentication fails"""
+    
+    def __init__(self, error_message: str):
+        super().__init__(
+            message=f"Amazon authentication failed: {error_message}",
+            code="AMAZON_AUTH_FAILED",
+            status_code=401,
+            details={"error": error_message}
+        )

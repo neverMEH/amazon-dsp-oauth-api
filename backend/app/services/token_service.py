@@ -364,6 +364,273 @@ class TokenService:
         except Exception as e:
             logger.error("Failed to get audit logs", error=str(e))
             raise DatabaseError("get_audit_logs", str(e))
+    
+    # Amazon Account Token Management
+    
+    async def store_amazon_tokens(
+        self, 
+        user_id: str, 
+        profile_id: int, 
+        tokens: Dict[str, Any]
+    ) -> Dict:
+        """
+        Store Amazon tokens for a specific user and profile
+        
+        Args:
+            user_id: Clerk user ID
+            profile_id: Amazon profile ID
+            tokens: Token data from Amazon OAuth
+            
+        Returns:
+            Stored user account record
+        """
+        try:
+            # Encrypt tokens
+            encrypted_access = token_encryption.encrypt_token(tokens["access_token"])
+            encrypted_refresh = token_encryption.encrypt_token(tokens["refresh_token"])
+            
+            # Calculate expiration
+            expires_at = (
+                datetime.now(timezone.utc) + 
+                timedelta(seconds=tokens.get("expires_in", 3600))
+            ).isoformat()
+            
+            # Store in user_accounts table
+            data = {
+                "user_id": user_id,
+                "profile_id": str(profile_id),
+                "platform": "amazon",
+                "encrypted_access_token": encrypted_access,
+                "encrypted_refresh_token": encrypted_refresh,
+                "token_expires_at": expires_at,
+                "scope": tokens.get("scope", ""),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+            
+            # Check if account already exists (upsert)
+            existing = self.db.table("user_accounts").select("*").eq(
+                "user_id", user_id
+            ).eq("profile_id", str(profile_id)).eq("platform", "amazon").execute()
+            
+            if existing.data:
+                # Update existing
+                result = self.db.table("user_accounts").update({
+                    "encrypted_access_token": encrypted_access,
+                    "encrypted_refresh_token": encrypted_refresh,
+                    "token_expires_at": expires_at,
+                    "scope": tokens.get("scope", ""),
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                }).eq("id", existing.data[0]["id"]).execute()
+                
+                logger.info(
+                    "Updated Amazon tokens", 
+                    user_id=user_id, 
+                    profile_id=profile_id
+                )
+                return result.data[0] if result.data else existing.data[0]
+            else:
+                # Insert new
+                result = self.db.table("user_accounts").insert(data).execute()
+                
+                logger.info(
+                    "Stored new Amazon tokens", 
+                    user_id=user_id, 
+                    profile_id=profile_id
+                )
+                return result.data[0] if result.data else data
+                
+        except Exception as e:
+            logger.error("Failed to store Amazon tokens", user_id=user_id, error=str(e))
+            raise DatabaseError("store_amazon_tokens", str(e))
+    
+    async def retrieve_amazon_tokens(
+        self, 
+        user_id: str, 
+        profile_id: int
+    ) -> Optional[Dict[str, str]]:
+        """
+        Retrieve and decrypt Amazon tokens for a user and profile
+        
+        Args:
+            user_id: Clerk user ID
+            profile_id: Amazon profile ID
+            
+        Returns:
+            Dict with decrypted tokens or None if not found
+        """
+        try:
+            result = self.db.table("user_accounts").select("*").eq(
+                "user_id", user_id
+            ).eq("profile_id", str(profile_id)).eq("platform", "amazon").execute()
+            
+            if not result.data:
+                return None
+            
+            account = result.data[0]
+            
+            # Decrypt tokens
+            try:
+                access_token = token_encryption.decrypt_token(account["encrypted_access_token"])
+                refresh_token = token_encryption.decrypt_token(account["encrypted_refresh_token"])
+                
+                return {
+                    "access_token": access_token,
+                    "refresh_token": refresh_token,
+                    "expires_at": account["token_expires_at"],
+                    "scope": account["scope"]
+                }
+            except Exception as decrypt_error:
+                logger.error(
+                    "Failed to decrypt Amazon tokens", 
+                    user_id=user_id, 
+                    profile_id=profile_id,
+                    error=str(decrypt_error)
+                )
+                raise EncryptionError("decrypt_amazon_tokens", str(decrypt_error))
+                
+        except Exception as e:
+            logger.error("Failed to retrieve Amazon tokens", user_id=user_id, error=str(e))
+            return None
+    
+    async def check_token_expiry(self, user_id: str, profile_id: int) -> bool:
+        """
+        Check if Amazon tokens need refresh
+        
+        Args:
+            user_id: Clerk user ID
+            profile_id: Amazon profile ID
+            
+        Returns:
+            True if tokens need refresh, False otherwise
+        """
+        try:
+            result = self.db.table("user_accounts").select("token_expires_at").eq(
+                "user_id", user_id
+            ).eq("profile_id", str(profile_id)).eq("platform", "amazon").execute()
+            
+            if not result.data:
+                return True  # No tokens found, needs auth
+            
+            expires_at = datetime.fromisoformat(
+                result.data[0]["token_expires_at"].replace("Z", "+00:00")
+            )
+            now = datetime.now(timezone.utc)
+            
+            # Refresh if expiring within 5 minutes
+            return (expires_at - now).total_seconds() < 300
+            
+        except Exception as e:
+            logger.error("Failed to check token expiry", user_id=user_id, error=str(e))
+            return True  # Assume needs refresh on error
+    
+    async def get_user_amazon_accounts(self, user_id: str) -> list:
+        """
+        Get all Amazon accounts for a user
+        
+        Args:
+            user_id: Clerk user ID
+            
+        Returns:
+            List of Amazon account records
+        """
+        try:
+            result = self.db.table("user_accounts").select(
+                "profile_id, token_expires_at, scope, created_at, updated_at"
+            ).eq("user_id", user_id).eq("platform", "amazon").execute()
+            
+            return result.data if result.data else []
+            
+        except Exception as e:
+            logger.error("Failed to get user Amazon accounts", user_id=user_id, error=str(e))
+            return []
+    
+    async def get_connection_status(self, user_id: str, profile_id: int) -> Dict:
+        """
+        Get Amazon connection status for a user and profile
+        
+        Args:
+            user_id: Clerk user ID
+            profile_id: Amazon profile ID
+            
+        Returns:
+            Connection status dictionary
+        """
+        try:
+            result = self.db.table("user_accounts").select("*").eq(
+                "user_id", user_id
+            ).eq("profile_id", str(profile_id)).eq("platform", "amazon").execute()
+            
+            if not result.data:
+                return {
+                    "connected": False,
+                    "profile_id": profile_id,
+                    "needs_refresh": False,
+                    "expires_at": None,
+                    "last_updated": None,
+                    "error": None
+                }
+            
+            account = result.data[0]
+            expires_at = datetime.fromisoformat(
+                account["token_expires_at"].replace("Z", "+00:00")
+            )
+            now = datetime.now(timezone.utc)
+            needs_refresh = (expires_at - now).total_seconds() < 300
+            
+            return {
+                "connected": True,
+                "profile_id": profile_id,
+                "needs_refresh": needs_refresh,
+                "expires_at": account["token_expires_at"],
+                "last_updated": account["updated_at"],
+                "error": None
+            }
+            
+        except Exception as e:
+            logger.error("Failed to get connection status", user_id=user_id, error=str(e))
+            return {
+                "connected": False,
+                "profile_id": profile_id,
+                "needs_refresh": False,
+                "expires_at": None,
+                "last_updated": None,
+                "error": str(e)
+            }
+    
+    async def disconnect_amazon_account(self, user_id: str, profile_id: int) -> bool:
+        """
+        Disconnect Amazon account by removing tokens
+        
+        Args:
+            user_id: Clerk user ID
+            profile_id: Amazon profile ID
+            
+        Returns:
+            True if successfully disconnected
+        """
+        try:
+            result = self.db.table("user_accounts").delete().eq(
+                "user_id", user_id
+            ).eq("profile_id", str(profile_id)).eq("platform", "amazon").execute()
+            
+            success = bool(result.data)
+            if success:
+                logger.info("Disconnected Amazon account", user_id=user_id, profile_id=profile_id)
+            
+            return success
+            
+        except Exception as e:
+            logger.error("Failed to disconnect Amazon account", user_id=user_id, error=str(e))
+            return False
+    
+    def encrypt_token(self, token: str) -> str:
+        """Encrypt a token for storage"""
+        return token_encryption.encrypt_token(token)
+    
+    def decrypt_token(self, encrypted_token: str) -> str:
+        """Decrypt a token from storage"""
+        return token_encryption.decrypt_token(encrypted_token)
 
 
 # Create singleton instance
