@@ -39,7 +39,7 @@ async def login():
     Redirect the user to the auth_url to begin authentication.
     """
     try:
-        # Check if already authenticated
+        # Check if already authenticated (optional - log warning but allow re-auth)
         existing_token = await token_service.get_active_token()
         if existing_token:
             # Check if token is still valid
@@ -47,14 +47,12 @@ async def login():
                 existing_token["expires_at"].replace("Z", "+00:00")
             )
             if expires_at > datetime.now(timezone.utc):
-                raise HTTPException(
-                    status_code=409,
-                    detail={"error": {
-                        "code": "ALREADY_AUTHENTICATED",
-                        "message": "Active token already exists",
-                        "details": {"expires_at": existing_token["expires_at"]}
-                    }}
+                logger.warning(
+                    "Re-authentication requested with active token",
+                    expires_at=existing_token["expires_at"]
                 )
+                # Allow re-authentication but log it
+                # This is useful for testing and when users want to refresh their credentials
         
         # Generate authorization URL and state
         auth_url, state_token = oauth_client.generate_authorization_url()
