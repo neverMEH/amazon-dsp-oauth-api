@@ -2,7 +2,7 @@
 Background token refresh service
 """
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 import structlog
 
@@ -32,7 +32,7 @@ async def refresh_token_if_needed():
         expires_at = datetime.fromisoformat(
             tokens["expires_at"].replace("Z", "+00:00")
         )
-        time_until_expiry = (expires_at - datetime.utcnow()).total_seconds()
+        time_until_expiry = (expires_at - datetime.now(timezone.utc)).total_seconds()
         
         logger.debug(
             "Token status",

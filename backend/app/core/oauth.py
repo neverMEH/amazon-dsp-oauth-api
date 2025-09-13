@@ -3,7 +3,7 @@ Amazon OAuth client implementation
 """
 import httpx
 from typing import Dict, Optional, Tuple
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
 import structlog
 
@@ -104,7 +104,7 @@ class AmazonOAuthClient:
                 token_data = response.json()
                 
                 # Calculate expiration timestamp
-                expires_at = datetime.utcnow() + timedelta(
+                expires_at = datetime.now(timezone.utc) + timedelta(
                     seconds=token_data.get("expires_in", 3600)
                 )
                 
@@ -177,7 +177,7 @@ class AmazonOAuthClient:
                 token_data = response.json()
                 
                 # Calculate expiration timestamp
-                expires_at = datetime.utcnow() + timedelta(
+                expires_at = datetime.now(timezone.utc) + timedelta(
                     seconds=token_data.get("expires_in", 3600)
                 )
                 

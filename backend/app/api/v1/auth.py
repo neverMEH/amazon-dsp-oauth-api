@@ -4,7 +4,7 @@ OAuth authentication endpoints
 from fastapi import APIRouter, Query, Header, HTTPException, Depends
 from fastapi.responses import JSONResponse
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import structlog
 
 from app.config import settings
@@ -46,7 +46,7 @@ async def login():
             expires_at = datetime.fromisoformat(
                 existing_token["expires_at"].replace("Z", "+00:00")
             )
-            if expires_at > datetime.utcnow():
+            if expires_at > datetime.now(timezone.utc):
                 raise HTTPException(
                     status_code=409,
                     detail={"error": {
@@ -184,7 +184,7 @@ async def get_auth_status():
         expires_at = datetime.fromisoformat(
             token_record["expires_at"].replace("Z", "+00:00")
         )
-        is_valid = expires_at > datetime.utcnow()
+        is_valid = expires_at > datetime.now(timezone.utc)
         
         return AuthStatus(
             authenticated=True,
@@ -248,7 +248,7 @@ async def refresh_token(
         expires_at = datetime.fromisoformat(
             tokens["expires_at"].replace("Z", "+00:00")
         )
-        time_until_expiry = (expires_at - datetime.utcnow()).total_seconds()
+        time_until_expiry = (expires_at - datetime.now(timezone.utc)).total_seconds()
         
         if time_until_expiry > settings.token_refresh_buffer:
             raise HTTPException(
@@ -335,7 +335,7 @@ async def revoke_tokens(
         return {
             "status": "success",
             "message": "Tokens revoked successfully",
-            "revoked_at": datetime.utcnow().isoformat()
+            "revoked_at": datetime.now(timezone.utc).isoformat()
         }
         
     except HTTPException:
