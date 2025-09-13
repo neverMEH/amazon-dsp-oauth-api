@@ -68,19 +68,25 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
 - Responsive design with desktop-first layout using Tailwind CSS
 - Testing and verification setup completed
 
-### 4. Amazon Account Connection Flow 🔲 PENDING
+### 4. Amazon Account Connection Flow ✅ COMPLETED
 
-4.1 🔲 Write integration tests for Amazon OAuth flow and token management
-4.2 🔲 Implement Amazon OAuth initiation endpoint with proper scopes
-4.3 🔲 Create OAuth callback handler for authorization code exchange
-4.4 🔲 Add token storage and refresh logic for Amazon API access
-4.5 🔲 Implement account connection status tracking and error handling
-4.6 🔲 Build frontend components for Amazon account connection UI
-4.7 🔲 Add connection status indicators and retry mechanisms
-4.8 🔲 Verify all Amazon OAuth tests pass and connection flow works end-to-end
+4.1 ✅ Write integration tests for Amazon OAuth flow and token management
+4.2 ✅ Implement Amazon OAuth initiation endpoint with proper scopes
+4.3 ✅ Create OAuth callback handler for authorization code exchange
+4.4 ✅ Add token storage and refresh logic for Amazon API access
+4.5 ✅ Implement account connection status tracking and error handling
+4.6 ✅ Build frontend components for Amazon account connection UI
+4.7 ✅ Add connection status indicators and retry mechanisms
+4.8 ✅ Verify all Amazon OAuth tests pass and connection flow works end-to-end
 
-**Status:** Ready for implementation after Task 3 completion
-**Dependencies:** Requires @agent-amazon-ads-api-expert for API integration details
+**Completed Items:**
+- Comprehensive Amazon OAuth service with DSP Campaign Insights API scopes
+- User-specific token management with automatic refresh
+- Frontend components: AmazonAccountConnection, AmazonOAuthCallback, AmazonConnectionStatusIndicator
+- Integration tests covering OAuth flows, token management, and error scenarios
+- Connection status tracking and error recovery mechanisms
+- Multi-account support for Amazon advertising profiles
+- Production deployment with build fixes applied
 
 ### 5. Account Management Interface 🔲 PENDING
 
@@ -103,8 +109,8 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
 - ✅ **Task 1 (Database)**: Fully completed with comprehensive schema and RLS policies
 - ✅ **Task 2 (Clerk Auth)**: Fully completed with production deployment and testing
 - ✅ **Task 3 (Dashboard)**: Fully completed with frontend implementation and testing
-- 🔲 **Task 4 (Amazon OAuth)**: Ready for implementation
-- 🔲 **Task 5 (Account Mgmt)**: Awaiting Task 4 completion
+- ✅ **Task 4 (Amazon OAuth)**: Fully completed with OAuth flow, token management, and UI components
+- 🔲 **Task 5 (Account Mgmt)**: Ready for implementation
 
 ## Technical Implementation Status
 
@@ -113,11 +119,17 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
 - Clerk authentication integration
 - FastAPI backend with protected routes
 - Railway deployment pipeline
-- Comprehensive test suite (16 Clerk tests)
+- Comprehensive test suite (16 Clerk tests + 44 Amazon OAuth tests)
 - User management endpoints
 - Webhook handlers for real-time sync
 - Complete frontend dashboard with shadcn/ui components
 - Responsive design and accessibility features
 - Error handling and loading states
+- Amazon OAuth 2.0 integration with DSP Campaign Insights API scopes
+- User-specific token management with automatic refresh service
+- Amazon account connection UI components with status tracking
+- Multi-account support for Amazon advertising profiles
+- Token encryption and secure storage with Fernet
+- Build pipeline fixed for React Router compatibility
 
-**Next Milestone:** Amazon OAuth integration and account connection flow
+**Next Milestone:** Account management interface with health monitoring and settings
