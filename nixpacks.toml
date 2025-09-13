@@ -2,7 +2,7 @@
 # Builds both frontend and backend
 
 [phases.setup]
-nixPkgs = ["python311", "python311Packages.pip", "gcc", "nodejs", "npm"]
+nixPkgs = ["python311", "python311Packages.pip", "gcc", "nodejs-18_x"]
 
 [phases.install]
 cmds = [
