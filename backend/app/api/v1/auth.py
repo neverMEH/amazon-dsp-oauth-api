@@ -353,6 +353,69 @@ async def revoke_tokens(
         )
 
 
+@router.get("/tokens")
+async def get_tokens(
+    x_admin_key: Optional[str] = Header(None, description="Admin key for token retrieval")
+):
+    """
+    Retrieve the actual access and refresh tokens
+    
+    Requires admin key for authorization. Returns the decrypted tokens
+    for use in API calls.
+    """
+    try:
+        # Validate admin key
+        if x_admin_key != settings.admin_key:
+            raise HTTPException(
+                status_code=401,
+                detail={"error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "Invalid or missing admin key",
+                    "details": {}
+                }}
+            )
+        
+        # Get decrypted tokens
+        tokens = await token_service.get_decrypted_tokens()
+        
+        if not tokens:
+            raise HTTPException(
+                status_code=404,
+                detail={"error": {
+                    "code": "NO_TOKENS_FOUND",
+                    "message": "Authentication succeeded but no tokens found. Please complete the OAuth flow first.",
+                    "details": {}
+                }}
+            )
+        
+        # Check if token is still valid
+        expires_at = datetime.fromisoformat(
+            tokens["expires_at"].replace("Z", "+00:00")
+        )
+        is_valid = expires_at > datetime.now(timezone.utc)
+        
+        return {
+            "access_token": tokens["access_token"],
+            "refresh_token": tokens["refresh_token"],
+            "expires_at": tokens["expires_at"],
+            "token_valid": is_valid,
+            "refresh_count": tokens["refresh_count"]
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to retrieve tokens", error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail={"error": {
+                "code": "TOKEN_RETRIEVAL_FAILED",
+                "message": "Failed to retrieve tokens",
+                "details": {"error": str(e)}
+            }}
+        )
+
+
 @router.get("/audit")
 async def get_audit_logs(
     limit: int = Query(50, ge=1, le=100, description="Number of entries"),
