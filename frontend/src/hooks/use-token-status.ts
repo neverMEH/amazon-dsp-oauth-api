@@ -16,7 +16,7 @@ export interface UseTokenStatusReturn {
   refetch: () => Promise<void>;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
 export function useTokenStatus(pollInterval: number = 1000): UseTokenStatusReturn {
   const [status, setStatus] = useState<TokenStatus | null>(null);
@@ -65,7 +65,8 @@ export function useTokenStatus(pollInterval: number = 1000): UseTokenStatusRetur
   // Fetch token status from API
   const fetchStatus = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/auth/status`, {
+      const url = API_BASE_URL ? `${API_BASE_URL}/api/v1/auth/status` : '/api/v1/auth/status';
+      const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -74,13 +75,30 @@ export function useTokenStatus(pollInterval: number = 1000): UseTokenStatusRetur
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch status: ${response.statusText}`);
+        if (response.status === 404) {
+          // No active token
+          setStatus(null);
+          setConnectionStatus('disconnected');
+          setError('No active authentication found');
+        } else {
+          throw new Error(`Failed to fetch status: ${response.statusText}`);
+        }
+      } else {
+        const data = await response.json();
+        // Map the backend response to the expected TokenStatus structure
+        const tokenStatus: TokenStatus = {
+          isConnected: data.authenticated === true,
+          accessToken: data.authenticated ? 'active' : null,
+          refreshToken: data.authenticated ? 'active' : null,
+          expiresAt: data.expires_at,
+          lastRefreshTime: data.last_refresh,
+          nextRefreshTime: null, // Backend doesn't return this yet
+          autoRefreshEnabled: false, // Backend doesn't return this yet
+        };
+        setStatus(tokenStatus);
+        setConnectionStatus(data.authenticated && data.token_valid ? 'connected' : 'disconnected');
+        setError(null);
       }
-
-      const data: AuthStatusResponse = await response.json();
-      setStatus(data.tokenStatus);
-      setConnectionStatus(data.status);
-      setError(null);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch token status';
       setError(errorMessage);
@@ -99,7 +117,8 @@ export function useTokenStatus(pollInterval: number = 1000): UseTokenStatusRetur
     setConnectionStatus('refreshing');
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/auth/refresh`, {
+      const url = API_BASE_URL ? `${API_BASE_URL}/api/v1/auth/refresh` : '/api/v1/auth/refresh';
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -111,18 +130,17 @@ export function useTokenStatus(pollInterval: number = 1000): UseTokenStatusRetur
         throw new Error(`Failed to refresh tokens: ${response.statusText}`);
       }
 
-      const data: RefreshResponse = await response.json();
+      const data = await response.json();
 
-      if (data.success && data.tokenStatus) {
-        setStatus(data.tokenStatus);
-        setConnectionStatus('connected');
+      // Backend returns a simple success response
+      if (data.status === 'success') {
         toast({
           title: 'Tokens Refreshed',
-          description: 'Your authentication tokens have been successfully refreshed.',
+          description: data.message || 'Your authentication tokens have been successfully refreshed.',
           variant: 'default',
         });
       } else {
-        throw new Error(data.message || 'Failed to refresh tokens');
+        throw new Error(data.detail || 'Failed to refresh tokens');
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to refresh tokens';
