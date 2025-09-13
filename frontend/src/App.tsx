@@ -7,6 +7,7 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { Toaster } from '@/components/ui/toaster';
+import { TokenResponse } from '@/services/api';
 
 // Legacy components for backward compatibility
 import { OAuthLogin } from '@/components/OAuthLogin';
@@ -123,7 +124,7 @@ function App() {
                   expires_in: 0,
                   scope: '',
                   token_type: ''
-                }} />} />
+                } as TokenResponse} />} />
                 <Route path="/auth-dashboard" element={<AuthDashboard />} />
                 <Route path="/status-demo" element={<ConnectionStatusDemo />} />
 
