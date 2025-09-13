@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
 export interface TokenResponse {
   access_token: string;
@@ -16,7 +16,8 @@ export interface UserInfo {
 
 class ApiService {
   async getHealth() {
-    const response = await fetch(`${API_BASE_URL}/`);
+    const url = API_BASE_URL ? `${API_BASE_URL}/` : '/api/v1/health';
+    const response = await fetch(url);
     if (!response.ok) throw new Error('API is not healthy');
     return response.json();
   }
@@ -25,7 +26,8 @@ class ApiService {
     const params = new URLSearchParams();
     if (state) params.append('state', state);
     
-    const response = await fetch(`${API_BASE_URL}/api/v1/auth/login?${params}`);
+    const url = API_BASE_URL ? `${API_BASE_URL}/api/v1/auth/login?${params}` : `/api/v1/auth/login?${params}`;
+    const response = await fetch(url);
     if (!response.ok) throw new Error('Failed to initiate login');
     
     const data = await response.json();
@@ -36,7 +38,8 @@ class ApiService {
     const params = new URLSearchParams({ code });
     if (state) params.append('state', state);
     
-    const response = await fetch(`${API_BASE_URL}/api/v1/auth/callback?${params}`);
+    const url = API_BASE_URL ? `${API_BASE_URL}/api/v1/auth/callback?${params}` : `/api/v1/auth/callback?${params}`;
+    const response = await fetch(url);
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.detail || 'Failed to exchange code for tokens');
@@ -46,7 +49,8 @@ class ApiService {
   }
 
   async refreshToken(refreshToken: string): Promise<TokenResponse> {
-    const response = await fetch(`${API_BASE_URL}/api/v1/auth/refresh`, {
+    const url = API_BASE_URL ? `${API_BASE_URL}/api/v1/auth/refresh` : '/api/v1/auth/refresh';
+    const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
