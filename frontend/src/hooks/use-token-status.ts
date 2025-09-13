@@ -33,15 +33,24 @@ export function useTokenStatus(pollInterval: number = 1000): UseTokenStatusRetur
 
   // Calculate time differences
   const calculateTimeRemaining = useCallback(() => {
-    if (!status) return;
+    if (!status) {
+      setTimeUntilExpiry(0);
+      setTimeUntilNextRefresh(0);
+      setRefreshProgress(0);
+      return;
+    }
 
     const now = Date.now();
 
     // Calculate time until token expiry
     if (status.expiresAt) {
-      const expiryTime = new Date(status.expiresAt).getTime();
+      // Handle ISO 8601 dates with microseconds
+      const cleanedDate = status.expiresAt.replace(/\.\d{6}Z$/, 'Z');
+      const expiryTime = new Date(cleanedDate).getTime();
       const remaining = Math.max(0, Math.floor((expiryTime - now) / 1000));
       setTimeUntilExpiry(remaining);
+    } else {
+      setTimeUntilExpiry(0);
     }
 
     // Calculate time until next refresh
@@ -59,6 +68,9 @@ export function useTokenStatus(pollInterval: number = 1000): UseTokenStatusRetur
         const progress = Math.min(100, Math.max(0, (elapsed / totalDuration) * 100));
         setRefreshProgress(progress);
       }
+    } else {
+      setTimeUntilNextRefresh(0);
+      setRefreshProgress(0);
     }
   }, [status]);
 
@@ -225,6 +237,11 @@ export function useTokenStatus(pollInterval: number = 1000): UseTokenStatusRetur
       }
     };
   }, [status?.nextRefreshTime, status?.autoRefreshEnabled, status?.isConnected, isRefreshing, refreshTokens]);
+
+  // Update time calculations whenever status changes
+  useEffect(() => {
+    calculateTimeRemaining();
+  }, [status, calculateTimeRemaining]);
 
   // Initial fetch and polling setup
   useEffect(() => {
