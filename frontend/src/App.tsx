@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { OAuthLogin } from '@/components/OAuthLogin';
 import { OAuthCallback } from '@/components/OAuthCallback';
 import { TokenDashboard } from '@/components/TokenDashboard';
+import { AuthDashboard } from '@/components/AuthDashboard';
 import { ConnectionStatusDemo } from '@/pages/ConnectionStatusDemo';
 import { ThemeProvider } from '@/components/theme-provider';
 import { ThemeToggle } from '@/components/theme-toggle';
@@ -37,18 +38,9 @@ function App() {
           
           <Router>
             <Routes>
-              <Route path="/" element={tokens ? <Navigate to="/dashboard" /> : <OAuthLogin />} />
+              <Route path="/" element={<OAuthLogin />} />
               <Route path="/callback" element={<OAuthCallback />} />
-              <Route 
-                path="/dashboard" 
-                element={
-                  tokens ? (
-                    <TokenDashboard tokens={tokens} />
-                  ) : (
-                    <Navigate to="/" />
-                  )
-                } 
-              />
+              <Route path="/dashboard" element={<AuthDashboard />} />
               <Route path="/status-demo" element={<ConnectionStatusDemo />} />
             </Routes>
           </Router>
