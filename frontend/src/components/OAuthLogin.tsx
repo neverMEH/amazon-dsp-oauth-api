@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -14,7 +13,7 @@ export function OAuthLogin() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [healthCheck, setHealthCheck] = useState<'checking' | 'healthy' | 'error'>('checking');
-  const navigate = useNavigate();
+  // const navigate = useNavigate(); // Unused - removed
   const loginButtonRef = useRef<HTMLButtonElement>(null);
 
   // Check API health on component mount

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { OAuthLogin } from '@/components/OAuthLogin';
 import { OAuthCallback } from '@/components/OAuthCallback';
