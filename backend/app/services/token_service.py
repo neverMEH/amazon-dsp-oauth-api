@@ -152,17 +152,38 @@ class TokenService:
             Active token record or None
         """
         try:
+            # Get all active tokens (don't use .single() as it fails with multiple results)
             result = self.db.table("oauth_tokens").select("*").eq(
                 "is_active", True
-            ).single().execute()
+            ).execute()
             
-            if result.data:
-                return result.data
+            if not result.data:
+                logger.debug("No active tokens found")
+                return None
             
-            return None
+            if len(result.data) > 1:
+                # Multiple active tokens found - this shouldn't happen but handle it gracefully
+                logger.warning(
+                    f"Multiple active tokens found ({len(result.data)}), using most recent",
+                    count=len(result.data)
+                )
+                # Sort by created_at descending and return the most recent
+                sorted_tokens = sorted(result.data, key=lambda x: x['created_at'], reverse=True)
+                
+                # Optionally, deactivate older tokens to clean up
+                for old_token in sorted_tokens[1:]:
+                    logger.info(f"Deactivating older active token", token_id=old_token['id'])
+                    self.db.table("oauth_tokens").update(
+                        {"is_active": False}
+                    ).eq("id", old_token['id']).execute()
+                
+                return sorted_tokens[0]
+            
+            # Exactly one active token - the expected case
+            return result.data[0]
             
         except Exception as e:
-            logger.debug("No active token found", error=str(e))
+            logger.error("Error getting active token", error=str(e))
             return None
     
     async def get_decrypted_tokens(self) -> Optional[Dict]:

@@ -1,163 +1,135 @@
 #!/usr/bin/env python3
 """
-Debug script to check token storage and retrieval
+Debug script to check token storage and retrieval issues
 """
 import os
 import sys
 from pathlib import Path
+from datetime import datetime, timezone
+from dotenv import load_dotenv
 
 # Add backend to path
 sys.path.insert(0, str(Path(__file__).parent / "backend"))
 
-from dotenv import load_dotenv
+# Load environment variables
 load_dotenv()
 
-import asyncio
-from supabase import create_client, Client
-from datetime import datetime, timezone
+from supabase import create_client
+from app.config import settings
+from app.services.token_service import TokenService
 
-# Get Supabase credentials
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-
-if not SUPABASE_URL or not SUPABASE_KEY:
-    print("❌ Missing SUPABASE_URL or SUPABASE_KEY in environment")
-    print("Make sure you have a .env file with these values")
-    sys.exit(1)
-
-# Create Supabase client
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-
-def check_tokens():
-    """Check for tokens in the database"""
-    print("\n🔍 Checking for tokens in database...")
-    print("-" * 50)
+async def main():
+    """Debug token storage and retrieval"""
+    print("=== Amazon Ads API OAuth Token Debugging ===\n")
+    
+    # Initialize Supabase client
+    print(f"Connecting to Supabase...")
+    print(f"URL: {settings.supabase_url}")
     
     try:
-        # Check oauth_tokens table
-        result = supabase.table("oauth_tokens").select("*").execute()
+        client = create_client(settings.supabase_url, settings.supabase_key)
+        print("✓ Connected to Supabase\n")
+    except Exception as e:
+        print(f"✗ Failed to connect to Supabase: {e}")
+        return
+    
+    # Check all tokens in database
+    print("Checking all tokens in database...")
+    try:
+        all_tokens = client.table("oauth_tokens").select("*").execute()
+        print(f"Total tokens found: {len(all_tokens.data) if all_tokens.data else 0}")
         
-        if not result.data:
-            print("❌ No tokens found in oauth_tokens table")
-            return False
+        if all_tokens.data:
+            for token in all_tokens.data:
+                print(f"\nToken ID: {token['id']}")
+                print(f"  Is Active: {token['is_active']}")
+                print(f"  Created: {token['created_at']}")
+                print(f"  Expires: {token['expires_at']}")
+                print(f"  Refresh Count: {token.get('refresh_count', 0)}")
+                
+                # Check if expired
+                expires_at = datetime.fromisoformat(token['expires_at'].replace('Z', '+00:00'))
+                is_expired = expires_at < datetime.now(timezone.utc)
+                print(f"  Status: {'EXPIRED' if is_expired else 'VALID'}")
+    except Exception as e:
+        print(f"✗ Error fetching tokens: {e}")
+    
+    print("\n" + "="*50 + "\n")
+    
+    # Check active tokens specifically
+    print("Checking for active tokens (is_active=True)...")
+    try:
+        # Method 1: Using eq filter without single()
+        active_tokens = client.table("oauth_tokens").select("*").eq("is_active", True).execute()
+        print(f"Active tokens found (using eq): {len(active_tokens.data) if active_tokens.data else 0}")
         
-        print(f"✅ Found {len(result.data)} token record(s)")
+        if active_tokens.data:
+            for token in active_tokens.data:
+                print(f"  - Token ID: {token['id']}")
         
-        for i, token in enumerate(result.data, 1):
-            print(f"\nToken #{i}:")
-            print(f"  ID: {token.get('id')}")
-            print(f"  Active: {token.get('is_active')}")
-            print(f"  Expires at: {token.get('expires_at')}")
-            print(f"  Refresh count: {token.get('refresh_count', 0)}")
-            print(f"  Created at: {token.get('created_at')}")
+        # Method 2: Using single() - this is what the code uses
+        print("\nTrying with .single() method (current implementation)...")
+        try:
+            single_result = client.table("oauth_tokens").select("*").eq("is_active", True).single().execute()
+            print(f"Single result data: {single_result.data}")
+            if single_result.data:
+                print(f"  Token ID: {single_result.data['id']}")
+        except Exception as e:
+            print(f"  Error with single(): {e}")
             
-            # Check if token is expired
-            if token.get('expires_at'):
-                expires_at = datetime.fromisoformat(
-                    token['expires_at'].replace('Z', '+00:00')
-                )
-                is_valid = expires_at > datetime.now(timezone.utc)
-                print(f"  Valid: {'✅ Yes' if is_valid else '❌ No (expired)'}")
-            
-        # Check for active tokens
-        active_result = supabase.table("oauth_tokens").select("*").eq("is_active", True).execute()
-        
-        if active_result.data:
-            print(f"\n✅ Found {len(active_result.data)} ACTIVE token(s)")
+    except Exception as e:
+        print(f"✗ Error checking active tokens: {e}")
+    
+    print("\n" + "="*50 + "\n")
+    
+    # Test TokenService methods
+    print("Testing TokenService methods...")
+    token_service = TokenService(client)
+    
+    try:
+        print("Calling get_active_token()...")
+        active_token = await token_service.get_active_token()
+        if active_token:
+            print(f"✓ Active token found: {active_token['id']}")
         else:
-            print("\n⚠️  No ACTIVE tokens found (all tokens are deactivated)")
+            print("✗ No active token returned")
             
-        return True
-        
+        print("\nCalling get_decrypted_tokens()...")
+        decrypted = await token_service.get_decrypted_tokens()
+        if decrypted:
+            print(f"✓ Decrypted tokens retrieved")
+            print(f"  Access token: {decrypted['access_token'][:50]}...")
+            print(f"  Refresh token: {decrypted['refresh_token'][:50]}...")
+        else:
+            print("✗ No decrypted tokens returned")
+            
     except Exception as e:
-        print(f"❌ Error checking tokens: {e}")
-        return False
-
-def check_auth_logs():
-    """Check authentication audit logs"""
-    print("\n📋 Checking authentication audit logs...")
-    print("-" * 50)
+        print(f"✗ Error with TokenService: {e}")
     
+    print("\n" + "="*50 + "\n")
+    
+    # Check for data consistency issues
+    print("Checking for data consistency issues...")
+    
+    # Check for multiple active tokens
     try:
-        # Get recent auth events
-        result = supabase.table("auth_audit_log").select("*").order(
-            "created_at", desc=True
-        ).limit(10).execute()
-        
-        if not result.data:
-            print("❌ No authentication events found")
-            return
-        
-        print(f"✅ Found {len(result.data)} recent authentication event(s)")
-        
-        for event in result.data:
-            print(f"\n  {event.get('created_at', 'Unknown time')}:")
-            print(f"    Type: {event.get('event_type')}")
-            print(f"    Status: {event.get('event_status')}")
-            if event.get('error_message'):
-                print(f"    Error: {event.get('error_message')}")
-                
+        active_count = client.table("oauth_tokens").select("id", count="exact").eq("is_active", True).execute()
+        if hasattr(active_count, 'count') and active_count.count:
+            if active_count.count > 1:
+                print(f"⚠ WARNING: Multiple active tokens found ({active_count.count})")
+                print("  This could cause issues with .single() method")
+            elif active_count.count == 0:
+                print("⚠ WARNING: No active tokens in database")
+                print("  The OAuth flow may not have completed successfully")
+            else:
+                print(f"✓ Exactly one active token found")
+        else:
+            print("Could not get count of active tokens")
     except Exception as e:
-        print(f"❌ Error checking auth logs: {e}")
-
-def check_oauth_states():
-    """Check OAuth state tokens"""
-    print("\n🔐 Checking OAuth state tokens...")
-    print("-" * 50)
+        print(f"✗ Error checking consistency: {e}")
     
-    try:
-        # Get recent state tokens
-        result = supabase.table("oauth_states").select("*").order(
-            "created_at", desc=True
-        ).limit(5).execute()
-        
-        if not result.data:
-            print("❌ No OAuth state tokens found")
-            return
-        
-        print(f"✅ Found {len(result.data)} recent state token(s)")
-        
-        for state in result.data:
-            print(f"\n  State token (first 10 chars): {state.get('state_token', '')[:10]}...")
-            print(f"    Used: {'Yes' if state.get('used') else 'No'}")
-            print(f"    Created: {state.get('created_at')}")
-            print(f"    Expires: {state.get('expires_at')}")
-                
-    except Exception as e:
-        print(f"❌ Error checking state tokens: {e}")
-
-def main():
-    """Run all checks"""
-    print("=" * 50)
-    print("🔍 Amazon DSP OAuth Token Debugger")
-    print("=" * 50)
-    
-    print(f"\n📦 Using Supabase URL: {SUPABASE_URL}")
-    
-    # Check tokens
-    has_tokens = check_tokens()
-    
-    # Check auth logs
-    check_auth_logs()
-    
-    # Check OAuth states
-    check_oauth_states()
-    
-    print("\n" + "=" * 50)
-    
-    if has_tokens:
-        print("\n✅ Tokens exist in database")
-        print("\nTo retrieve tokens, use:")
-        print("  curl -X GET 'http://localhost:8000/api/v1/auth/tokens' \\")
-        print("    -H 'X-Admin-Key: your-admin-key'")
-    else:
-        print("\n❌ No tokens found")
-        print("\nTo authenticate:")
-        print("  1. Go to http://localhost:8000/api/v1/auth/amazon/login")
-        print("  2. Complete the Amazon OAuth flow")
-        print("  3. After callback, tokens should be stored")
-    
-    print("\n" + "=" * 50)
+    print("\n=== Diagnosis Complete ===")
 
 if __name__ == "__main__":
-    main()
+    import asyncio
+    asyncio.run(main())
