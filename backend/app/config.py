@@ -27,6 +27,12 @@ class Settings(BaseSettings):
     supabase_url: str
     supabase_key: str
     
+    # Clerk Authentication
+    clerk_publishable_key: Optional[str] = None
+    clerk_secret_key: Optional[str] = None
+    clerk_webhook_secret: Optional[str] = None
+    clerk_api_url: str = "https://api.clerk.com/v1"
+    
     # Application
     environment: str = "development"
     frontend_url: str = "http://localhost:3000"

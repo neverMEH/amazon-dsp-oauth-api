@@ -13,7 +13,7 @@ from pathlib import Path
 
 from app.config import settings
 from app.utils.logger import configure_logging
-from app.api.v1 import auth, health
+from app.api.v1 import auth, health, users, webhooks
 from app.middleware.error_handler import (
     oauth_exception_handler,
     http_exception_handler,
@@ -75,6 +75,8 @@ app.add_exception_handler(Exception, general_exception_handler)
 # Include routers
 app.include_router(health.router, prefix="/api/v1")
 app.include_router(auth.router, prefix="/api/v1")
+app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
+app.include_router(webhooks.router, prefix="/api/v1/webhooks", tags=["webhooks"])
 
 # API endpoints
 @app.get("/api")
@@ -93,6 +95,14 @@ async def api_info():
                 "refresh": "/api/v1/auth/refresh",
                 "revoke": "/api/v1/auth/revoke",
                 "audit": "/api/v1/auth/audit"
+            },
+            "users": {
+                "profile": "/api/v1/users/me",
+                "accounts": "/api/v1/users/me/accounts",
+                "session": "/api/v1/users/session"
+            },
+            "webhooks": {
+                "clerk": "/api/v1/webhooks/clerk"
             }
         }
     }
@@ -140,23 +150,3 @@ else:
             "docs": "/docs" if settings.environment == "development" else None
         }
 
-
-@app.get("/api")
-async def api_info():
-    """
-    API information endpoint
-    """
-    return {
-        "version": "v1",
-        "endpoints": {
-            "health": "/api/v1/health",
-            "auth": {
-                "login": "/api/v1/auth/amazon/login",
-                "callback": "/api/v1/auth/amazon/callback",
-                "status": "/api/v1/auth/status",
-                "refresh": "/api/v1/auth/refresh",
-                "revoke": "/api/v1/auth/revoke",
-                "audit": "/api/v1/auth/audit"
-            }
-        }
-    }
