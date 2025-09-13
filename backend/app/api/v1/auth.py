@@ -133,7 +133,9 @@ async def callback(
         
         # Redirect to frontend callback handler with success
         # The frontend will handle displaying the tokens
-        frontend_callback_url = f"{settings.frontend_url}/callback?success=true&state={state}"
+        # Remove trailing slash from frontend_url if present
+        frontend_base = settings.frontend_url.rstrip('/')
+        frontend_callback_url = f"{frontend_base}/callback?success=true&state={state}"
         return RedirectResponse(url=frontend_callback_url, status_code=302)
         
     except OAuthException as e:
