@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -23,8 +23,8 @@ interface CallbackResult {
 }
 
 export function AmazonOAuthCallback() {
-  const searchParams = useSearchParams()
-  const router = useRouter()
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
   const [isProcessing, setIsProcessing] = useState(true)
   const [result, setResult] = useState<CallbackResult | null>(null)
 
@@ -121,11 +121,11 @@ export function AmazonOAuthCallback() {
   }
 
   const continueToDashboard = () => {
-    router.push('/dashboard')
+    navigate('/dashboard')
   }
 
   const retryConnection = () => {
-    router.push('/dashboard?tab=connections')
+    navigate('/dashboard?tab=connections')
   }
 
   if (isProcessing) {
