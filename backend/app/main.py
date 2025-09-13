@@ -4,9 +4,12 @@ FastAPI application entry point
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from contextlib import asynccontextmanager
 import asyncio
 import structlog
+from pathlib import Path
 
 from app.config import settings
 from app.utils.logger import configure_logging
@@ -73,18 +76,48 @@ app.add_exception_handler(Exception, general_exception_handler)
 app.include_router(health.router, prefix="/api/v1")
 app.include_router(auth.router, prefix="/api/v1")
 
-
-@app.get("/")
-async def root():
-    """
-    Root endpoint
-    """
-    return {
-        "service": "Amazon DSP OAuth API",
-        "version": settings.api_version,
-        "status": "online",
-        "docs": "/docs" if settings.environment == "development" else None
-    }
+# Check if frontend build exists and mount it
+frontend_dist = Path(__file__).parent.parent.parent / "frontend" / "dist"
+if frontend_dist.exists():
+    # Mount static files for assets
+    app.mount("/assets", StaticFiles(directory=str(frontend_dist / "assets")), name="assets")
+    
+    # Serve index.html for all non-API routes
+    @app.get("/{full_path:path}")
+    async def serve_frontend(full_path: str):
+        """
+        Serve frontend for all non-API routes
+        """
+        # Skip API routes
+        if full_path.startswith("api/"):
+            raise HTTPException(status_code=404, detail="Not found")
+        
+        # Check if requesting a static file
+        file_path = frontend_dist / full_path
+        if file_path.exists() and file_path.is_file():
+            return FileResponse(str(file_path))
+        
+        # Otherwise serve index.html for client-side routing
+        return FileResponse(str(frontend_dist / "index.html"))
+    
+    @app.get("/")
+    async def root():
+        """
+        Serve frontend index
+        """
+        return FileResponse(str(frontend_dist / "index.html"))
+else:
+    @app.get("/")
+    async def root():
+        """
+        Root endpoint (API-only mode)
+        """
+        return {
+            "service": "Amazon DSP OAuth API",
+            "version": settings.api_version,
+            "status": "online",
+            "docs": "/docs" if settings.environment == "development" else None
+        }
 
 
 @app.get("/api")

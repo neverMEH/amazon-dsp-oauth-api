@@ -1,11 +1,14 @@
 # Nixpacks configuration for Railway deployment
-# Using python311Packages.pip to ensure pip is available
+# Builds both frontend and backend
 
 [phases.setup]
-nixPkgs = ["python311", "python311Packages.pip", "gcc"]
+nixPkgs = ["python311", "python311Packages.pip", "gcc", "nodejs", "npm"]
 
 [phases.install]
 cmds = [
+    # Build frontend first
+    "cd frontend && npm install && npm run build && cd ..",
+    # Then install backend dependencies
     "python -m venv /opt/venv",
     ". /opt/venv/bin/activate && cd backend && pip install -r requirements.txt"
 ]
