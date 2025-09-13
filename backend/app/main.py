@@ -76,21 +76,42 @@ app.add_exception_handler(Exception, general_exception_handler)
 app.include_router(health.router, prefix="/api/v1")
 app.include_router(auth.router, prefix="/api/v1")
 
+# API endpoints
+@app.get("/api")
+async def api_info():
+    """
+    API information endpoint
+    """
+    return {
+        "version": "v1",
+        "endpoints": {
+            "health": "/api/v1/health",
+            "auth": {
+                "login": "/api/v1/auth/amazon/login",
+                "callback": "/api/v1/auth/amazon/callback",
+                "status": "/api/v1/auth/status",
+                "refresh": "/api/v1/auth/refresh",
+                "revoke": "/api/v1/auth/revoke",
+                "audit": "/api/v1/auth/audit"
+            }
+        }
+    }
+
 # Check if frontend build exists and mount it
 frontend_dist = Path(__file__).parent.parent.parent / "frontend" / "dist"
 if frontend_dist.exists():
     # Mount static files for assets
     app.mount("/assets", StaticFiles(directory=str(frontend_dist / "assets")), name="assets")
     
-    # Serve index.html for all non-API routes
+    # Serve index.html for all non-API routes (MUST be last)
     @app.get("/{full_path:path}")
     async def serve_frontend(full_path: str):
         """
         Serve frontend for all non-API routes
         """
-        # Skip API routes
+        # Skip API routes - this shouldn't be reached due to route ordering
         if full_path.startswith("api/"):
-            raise HTTPException(status_code=404, detail="Not found")
+            raise HTTPException(status_code=404, detail="API endpoint not found")
         
         # Check if requesting a static file
         file_path = frontend_dist / full_path

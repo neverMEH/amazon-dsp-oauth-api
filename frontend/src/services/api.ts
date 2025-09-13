@@ -26,7 +26,7 @@ class ApiService {
     const params = new URLSearchParams();
     if (state) params.append('state', state);
     
-    const url = API_BASE_URL ? `${API_BASE_URL}/api/v1/auth/login?${params}` : `/api/v1/auth/login?${params}`;
+    const url = API_BASE_URL ? `${API_BASE_URL}/api/v1/auth/amazon/login?${params}` : `/api/v1/auth/amazon/login?${params}`;
     const response = await fetch(url);
     if (!response.ok) throw new Error('Failed to initiate login');
     
@@ -38,7 +38,7 @@ class ApiService {
     const params = new URLSearchParams({ code });
     if (state) params.append('state', state);
     
-    const url = API_BASE_URL ? `${API_BASE_URL}/api/v1/auth/callback?${params}` : `/api/v1/auth/callback?${params}`;
+    const url = API_BASE_URL ? `${API_BASE_URL}/api/v1/auth/amazon/callback?${params}` : `/api/v1/auth/amazon/callback?${params}`;
     const response = await fetch(url);
     if (!response.ok) {
       const error = await response.json();
