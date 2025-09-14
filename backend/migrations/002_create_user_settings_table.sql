@@ -2,6 +2,34 @@
 -- Description: Store user preferences and settings for the application
 -- Created: 2025-09-13
 
+-- First ensure the users table exists (from migration 001)
+-- This makes the migration more robust
+DO $$ 
+BEGIN
+    -- Check if users table exists, if not create it
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'users'
+    ) THEN
+        -- Create minimal users table if it doesn't exist
+        CREATE TABLE users (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            clerk_user_id VARCHAR(255) UNIQUE NOT NULL,
+            email VARCHAR(255) UNIQUE NOT NULL,
+            first_name VARCHAR(100),
+            last_name VARCHAR(100),
+            profile_image_url TEXT,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            last_login_at TIMESTAMP WITH TIME ZONE
+        );
+        
+        CREATE INDEX IF NOT EXISTS idx_users_clerk_user_id ON users(clerk_user_id);
+        CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+    END IF;
+END $$;
+
 -- Create user_settings table
 CREATE TABLE IF NOT EXISTS user_settings (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -56,7 +84,7 @@ CREATE POLICY user_settings_delete_policy ON user_settings
 
 -- Grant permissions
 GRANT ALL ON user_settings TO authenticated;
-GRANT USAGE ON SEQUENCE user_settings_id_seq TO authenticated;
+-- No sequence needed for UUID primary keys (we use gen_random_uuid())
 
 -- Comments
 COMMENT ON TABLE user_settings IS 'User preferences and application settings';
