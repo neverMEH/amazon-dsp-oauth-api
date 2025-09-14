@@ -25,7 +25,8 @@ class Settings(BaseSettings):
     
     # Supabase
     supabase_url: str
-    supabase_key: str
+    supabase_key: str  # Anon key for client-side operations
+    supabase_service_role_key: Optional[str] = None  # Service role key for backend operations
     
     # Clerk Authentication
     clerk_publishable_key: Optional[str] = None
