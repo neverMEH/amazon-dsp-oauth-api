@@ -400,8 +400,8 @@ class TokenService:
                 "user_id": user_id,
                 "profile_id": str(profile_id),
                 "platform": "amazon",
-                "encrypted_access_token": encrypted_access,
-                "encrypted_refresh_token": encrypted_refresh,
+                "access_token": encrypted_access,
+                "refresh_token": encrypted_refresh,
                 "token_expires_at": expires_at,
                 "scope": tokens.get("scope", ""),
                 "created_at": datetime.now(timezone.utc).isoformat(),
@@ -416,8 +416,8 @@ class TokenService:
             if existing.data:
                 # Update existing
                 result = self.db.table("user_accounts").update({
-                    "encrypted_access_token": encrypted_access,
-                    "encrypted_refresh_token": encrypted_refresh,
+                    "access_token": encrypted_access,
+                    "refresh_token": encrypted_refresh,
                     "token_expires_at": expires_at,
                     "scope": tokens.get("scope", ""),
                     "updated_at": datetime.now(timezone.utc).isoformat()
@@ -471,8 +471,8 @@ class TokenService:
             
             # Decrypt tokens
             try:
-                access_token = token_encryption.decrypt_token(account["encrypted_access_token"])
-                refresh_token = token_encryption.decrypt_token(account["encrypted_refresh_token"])
+                access_token = token_encryption.decrypt_token(account["access_token"])
+                refresh_token = token_encryption.decrypt_token(account["refresh_token"])
                 
                 return {
                     "access_token": access_token,

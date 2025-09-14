@@ -116,11 +116,24 @@ async def get_user_token(user_id: str, supabase) -> Optional[Dict]:
         result = supabase.table("oauth_tokens").select("*").eq("user_id", user_id).execute()
         if result.data and len(result.data) > 0:
             token_data = result.data[0]
-            # Decrypt the token
-            decrypted_token = token_service.decrypt_token(token_data["encrypted_access_token"])
+
+            # Check if tokens are encrypted (have encryption prefix) or plain text
+            access_token_raw = token_data["access_token"]
+            refresh_token_raw = token_data["refresh_token"]
+
+            # If tokens are encrypted, decrypt them. Otherwise use as-is
+            try:
+                access_token = token_service.decrypt_token(access_token_raw)
+                refresh_token = token_service.decrypt_token(refresh_token_raw)
+            except Exception:
+                # Tokens might be stored as plain text
+                logger.warning("Tokens appear to be stored as plain text", user_id=user_id)
+                access_token = access_token_raw
+                refresh_token = refresh_token_raw
+
             return {
-                "access_token": decrypted_token,
-                "refresh_token": token_service.decrypt_token(token_data["encrypted_refresh_token"]),
+                "access_token": access_token,
+                "refresh_token": refresh_token,
                 "expires_at": token_data["expires_at"]
             }
         return None
@@ -147,11 +160,11 @@ async def refresh_token_if_needed(user_id: str, token_data: Dict, supabase) -> D
             new_expires = now + timedelta(seconds=new_tokens.expires_in)
             
             update_data = {
-                "encrypted_access_token": token_service.encrypt_token(new_tokens.access_token),
-                "encrypted_refresh_token": token_service.encrypt_token(new_tokens.refresh_token),
+                "access_token": token_service.encrypt_token(new_tokens.access_token),
+                "refresh_token": token_service.encrypt_token(new_tokens.refresh_token),
                 "expires_at": new_expires.isoformat(),
                 "refresh_count": supabase.table("oauth_tokens").select("refresh_count").eq("user_id", user_id).execute().data[0]["refresh_count"] + 1,
-                "last_refresh": now.isoformat()
+                "last_refresh_at": now.isoformat()  # Also fixed field name here
             }
             
             supabase.table("oauth_tokens").update(update_data).eq("user_id", user_id).execute()
@@ -837,11 +850,11 @@ async def reauthorize_account(
                 new_expires = datetime.now(timezone.utc) + timedelta(seconds=new_tokens.expires_in)
                 
                 update_data = {
-                    "encrypted_access_token": token_service.encrypt_token(new_tokens.access_token),
-                    "encrypted_refresh_token": token_service.encrypt_token(new_tokens.refresh_token),
+                    "access_token": token_service.encrypt_token(new_tokens.access_token),
+                    "refresh_token": token_service.encrypt_token(new_tokens.refresh_token),
                     "expires_at": new_expires.isoformat(),
                     "refresh_count": supabase.table("oauth_tokens").select("refresh_count").eq("user_id", user_id).execute().data[0]["refresh_count"] + 1,
-                    "last_refresh": datetime.now(timezone.utc).isoformat()
+                    "last_refresh_at": datetime.now(timezone.utc).isoformat()
                 }
                 
                 supabase.table("oauth_tokens").update(update_data).eq("user_id", user_id).execute()
