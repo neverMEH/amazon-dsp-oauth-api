@@ -156,8 +156,8 @@ class AmazonAccountService:
         List all Amazon Advertising accounts using the Account Management API
         
         **Endpoint Details:**
-        - URL: GET https://advertising-api.amazon.com/am/accounts
-        - Method: GET
+        - URL: POST https://advertising-api.amazon.com/adsAccounts/list
+        - Method: POST
         - Version: v1
         - Required Headers: 
             - Authorization: Bearer {access_token}
@@ -205,28 +205,30 @@ class AmazonAccountService:
         headers = {
             "Authorization": f"Bearer {access_token}",
             "Amazon-Advertising-API-ClientId": settings.amazon_client_id,
-            "Content-Type": "application/json",
+            "Content-Type": "application/vnd.listaccountsresource.v1+json",
             "Accept": "application/json"
         }
         
-        # Account Management API endpoint
-        url = f"{self.base_url}/am/accounts"
+        # Account Management API endpoint - POST /adsAccounts/list
+        url = f"{self.base_url}/adsAccounts/list"
         
         try:
             all_accounts = []
             next_token = None
             
             while True:
-                # Add pagination token if available
-                params = {}
+                # Create request body with pagination token if available
+                request_body = {
+                    "maxResults": 100
+                }
                 if next_token:
-                    params["nextToken"] = next_token
-                
+                    request_body["nextToken"] = next_token
+
                 async with httpx.AsyncClient() as client:
-                    response = await client.get(
+                    response = await client.post(
                         url,
                         headers=headers,
-                        params=params,
+                        json=request_body,
                         timeout=30.0
                     )
                     
