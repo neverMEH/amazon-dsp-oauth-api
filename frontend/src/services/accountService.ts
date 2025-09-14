@@ -11,16 +11,34 @@ import {
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
+// Helper to get Clerk session token
+async function getClerkToken() {
+  // @ts-ignore - Clerk is available globally
+  const clerk = window.Clerk;
+  if (!clerk) {
+    console.warn('Clerk not initialized');
+    return null;
+  }
+  
+  try {
+    const token = await clerk.session?.getToken();
+    return token;
+  } catch (error) {
+    console.error('Failed to get Clerk token:', error);
+    return null;
+  }
+}
+
 class AccountService {
   private async fetchWithAuth(url: string, options?: RequestInit) {
-    // Get auth token from Clerk or your auth provider
-    // const token = await getAuthToken();
+    // Get auth token from Clerk
+    const token = await getClerkToken();
     
     const response = await fetch(`${API_BASE_URL}${url}`, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
-        // 'Authorization': `Bearer ${token}`,
+        'Authorization': token ? `Bearer ${token}` : '',
         ...options?.headers,
       },
       credentials: 'include',
@@ -129,6 +147,11 @@ class AccountService {
     if (days > 0) return `${days}d ${hours}h`;
     if (hours > 0) return `${hours}h ${minutes}m`;
     return `${minutes}m`;
+  }
+
+  // Sync accounts from Amazon Ads API
+  async syncAmazonAccounts(): Promise<any> {
+    return this.fetchWithAuth('/api/v1/accounts/amazon-ads-accounts');
   }
 }
 

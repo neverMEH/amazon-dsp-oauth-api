@@ -11,7 +11,8 @@ import {
   CheckCircle,
   XCircle,
   CircleOff,
-  ExternalLink
+  ExternalLink,
+  CloudDownload
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -133,6 +134,30 @@ export const AccountManagementPage: React.FC<AccountManagementPageProps> = ({
     }
 
     setFilteredAccounts(filtered);
+  };
+
+  const handleSyncFromAmazon = async () => {
+    setIsRefreshing(true);
+    try {
+      const result = await accountService.syncAmazonAccounts();
+      
+      toast({
+        title: "Accounts synced",
+        description: `Successfully synced ${result.accounts?.length || 0} accounts from Amazon.`,
+      });
+      
+      // Reload to display the newly synced accounts
+      await loadData();
+    } catch (error) {
+      console.error('Failed to sync accounts from Amazon:', error);
+      toast({
+        title: "Sync failed",
+        description: "Failed to sync accounts from Amazon. Please check your connection.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   const handleRefreshAll = async () => {
@@ -274,16 +299,25 @@ export const AccountManagementPage: React.FC<AccountManagementPageProps> = ({
         
         <div className="flex gap-2">
           <Button
+            onClick={handleSyncFromAmazon}
+            disabled={isRefreshing}
+            variant="default"
+          >
+            <CloudDownload className={cn("h-4 w-4 mr-2", isRefreshing && "animate-pulse")} />
+            Sync from Amazon
+          </Button>
+          
+          <Button
             variant="outline"
             onClick={handleRefreshAll}
             disabled={isRefreshing || accounts.length === 0}
           >
             <RefreshCw className={cn("h-4 w-4 mr-2", isRefreshing && "animate-spin")} />
-            Refresh All
+            Refresh Tokens
           </Button>
           
           {onAddAccount && (
-            <Button onClick={onAddAccount}>
+            <Button onClick={onAddAccount} variant="outline">
               <Plus className="h-4 w-4 mr-2" />
               Add Account
             </Button>
