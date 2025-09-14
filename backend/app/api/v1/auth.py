@@ -16,13 +16,20 @@ from app.core.exceptions import (
     TokenRefreshError
 )
 from app.services.token_service import token_service
+from app.services.account_service import account_service
+from app.services.amazon_oauth_service import amazon_oauth_service
 from app.schemas.auth import (
     LoginResponse,
     CallbackResponse,
     TokenInfo,
     AuthStatus,
     RefreshResponse,
-    ErrorResponse
+    ErrorResponse,
+    AmazonTokenResponse,
+    AmazonAccountInfo,
+    AmazonConnectionRequest,
+    AmazonConnectionStatus,
+    AmazonDisconnectionRequest
 )
 
 logger = structlog.get_logger()
@@ -452,6 +459,468 @@ async def get_audit_logs(
             detail={"error": {
                 "code": "AUDIT_FETCH_FAILED",
                 "message": "Failed to retrieve audit logs",
+                "details": {"error": str(e)}
+            }}
+        )
+
+
+@router.get("/profiles")
+async def list_profiles(
+    x_admin_key: Optional[str] = Header(None, description="Admin key for account access")
+):
+    """
+    List Amazon Advertising profiles (accounts)
+    
+    Requires admin key and valid authentication. Returns available advertising
+    profiles that can be used for API operations.
+    """
+    try:
+        # Validate admin key
+        if x_admin_key != settings.admin_key:
+            raise HTTPException(
+                status_code=401,
+                detail={"error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "Invalid or missing admin key",
+                    "details": {}
+                }}
+            )
+        
+        # Get access token
+        tokens = await token_service.get_decrypted_tokens()
+        if not tokens:
+            raise HTTPException(
+                status_code=404,
+                detail={"error": {
+                    "code": "NO_TOKENS_FOUND",
+                    "message": "No active authentication found. Complete OAuth flow first.",
+                    "details": {}
+                }}
+            )
+        
+        # Check token validity and refresh if needed
+        expires_at = datetime.fromisoformat(
+            tokens["expires_at"].replace("Z", "+00:00")
+        )
+        if expires_at <= datetime.now(timezone.utc):
+            # Token expired, try to refresh
+            try:
+                new_token_data = await oauth_client.refresh_access_token(tokens["refresh_token"])
+                tokens = await token_service.update_tokens(tokens["id"], new_token_data)
+            except Exception as refresh_error:
+                logger.error("Failed to refresh expired token", error=str(refresh_error))
+                raise HTTPException(
+                    status_code=401,
+                    detail={"error": {
+                        "code": "TOKEN_EXPIRED",
+                        "message": "Token expired and refresh failed. Please re-authenticate.",
+                        "details": {"refresh_error": str(refresh_error)}
+                    }}
+                )
+        
+        # List profiles
+        profiles = await account_service.list_profiles(tokens["access_token"])
+        
+        return {
+            "profiles": profiles,
+            "profile_count": len(profiles),
+            "retrieved_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to list profiles", error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail={"error": {
+                "code": "PROFILES_FETCH_FAILED",
+                "message": "Failed to retrieve advertising profiles",
+                "details": {"error": str(e)}
+            }}
+        )
+
+
+@router.get("/profiles/{profile_id}")
+async def get_profile_details(
+    profile_id: str,
+    x_admin_key: Optional[str] = Header(None, description="Admin key for account access")
+):
+    """
+    Get specific profile details
+    
+    Requires admin key and valid authentication. Returns detailed information
+    about a specific advertising profile.
+    """
+    try:
+        # Validate admin key
+        if x_admin_key != settings.admin_key:
+            raise HTTPException(
+                status_code=401,
+                detail={"error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "Invalid or missing admin key",
+                    "details": {}
+                }}
+            )
+        
+        # Get access token
+        tokens = await token_service.get_decrypted_tokens()
+        if not tokens:
+            raise HTTPException(
+                status_code=404,
+                detail={"error": {
+                    "code": "NO_TOKENS_FOUND",
+                    "message": "No active authentication found. Complete OAuth flow first.",
+                    "details": {}
+                }}
+            )
+        
+        # Get profile details
+        profile = await account_service.get_profile(tokens["access_token"], profile_id)
+        
+        return {
+            "profile": profile,
+            "retrieved_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to get profile details", profile_id=profile_id, error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail={"error": {
+                "code": "PROFILE_FETCH_FAILED",
+                "message": f"Failed to retrieve profile {profile_id}",
+                "details": {"error": str(e)}
+            }}
+        )
+
+
+@router.get("/profiles/{profile_id}/dsp-accounts")
+async def list_dsp_accounts(
+    profile_id: str,
+    x_admin_key: Optional[str] = Header(None, description="Admin key for account access")
+):
+    """
+    List DSP accounts under a profile
+    
+    Requires admin key and valid authentication. Returns DSP accounts available
+    for campaign management under the specified profile.
+    """
+    try:
+        # Validate admin key
+        if x_admin_key != settings.admin_key:
+            raise HTTPException(
+                status_code=401,
+                detail={"error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "Invalid or missing admin key",
+                    "details": {}
+                }}
+            )
+        
+        # Get access token
+        tokens = await token_service.get_decrypted_tokens()
+        if not tokens:
+            raise HTTPException(
+                status_code=404,
+                detail={"error": {
+                    "code": "NO_TOKENS_FOUND",
+                    "message": "No active authentication found. Complete OAuth flow first.",
+                    "details": {}
+                }}
+            )
+        
+        # List DSP accounts
+        dsp_accounts = await account_service.list_dsp_accounts(
+            tokens["access_token"], 
+            profile_id
+        )
+        
+        return {
+            "dsp_accounts": dsp_accounts,
+            "account_count": len(dsp_accounts),
+            "profile_id": profile_id,
+            "retrieved_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to list DSP accounts", profile_id=profile_id, error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail={"error": {
+                "code": "DSP_ACCOUNTS_FETCH_FAILED",
+                "message": f"Failed to retrieve DSP accounts for profile {profile_id}",
+                "details": {"error": str(e)}
+            }}
+        )
+
+
+# Amazon Account Connection Endpoints
+
+@router.get("/amazon/connect/{user_id}")
+async def initiate_amazon_connection(
+    user_id: str,
+    x_admin_key: Optional[str] = Header(None, description="Admin key for authorization")
+):
+    """
+    Initiate Amazon account connection for a specific user
+    
+    Creates an OAuth authorization URL for the user to connect their Amazon account.
+    Requires admin key for authorization.
+    """
+    try:
+        # Validate admin key
+        if x_admin_key != settings.admin_key:
+            raise HTTPException(
+                status_code=401,
+                detail={"error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "Invalid or missing admin key",
+                    "details": {}
+                }}
+            )
+        
+        # Generate Amazon OAuth URL with user-specific state
+        import secrets
+        state = f"{user_id}_{secrets.token_urlsafe(24)}"
+        auth_url, state_token = amazon_oauth_service.generate_oauth_url(state=state)
+        
+        # Store state for validation (extend token_service for user-specific states)
+        await token_service.store_state_token(state_token, settings.amazon_redirect_uri)
+        
+        return {
+            "auth_url": auth_url,
+            "state": state_token,
+            "user_id": user_id,
+            "expires_in": 600
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to initiate Amazon connection", user_id=user_id, error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail={"error": {
+                "code": "CONNECTION_INIT_FAILED",
+                "message": "Failed to initiate Amazon account connection",
+                "details": {"error": str(e)}
+            }}
+        )
+
+
+@router.post("/amazon/connect/callback")
+async def amazon_connection_callback(
+    code: str = Query(..., description="Authorization code"),
+    state: str = Query(..., description="State token"), 
+    error: Optional[str] = Query(None, description="Error code"),
+    error_description: Optional[str] = Query(None, description="Error description")
+):
+    """
+    Handle Amazon OAuth callback for user account connection
+    
+    Processes the authorization code and stores tokens for the specific user.
+    """
+    try:
+        # Check for authorization errors
+        if error:
+            logger.warning("Amazon authorization denied", error=error, description=error_description)
+            raise HTTPException(
+                status_code=400,
+                detail={"error": {
+                    "code": "AMAZON_AUTHORIZATION_DENIED",
+                    "message": error_description or "Amazon authorization was denied",
+                    "details": {"error": error}
+                }}
+            )
+        
+        # Extract user_id from state
+        if not state or "_" not in state:
+            raise HTTPException(
+                status_code=400,
+                detail={"error": {
+                    "code": "INVALID_STATE_FORMAT",
+                    "message": "State token format is invalid",
+                    "details": {}
+                }}
+            )
+        
+        user_id = state.split("_")[0]
+        
+        # Validate state token
+        is_valid = await token_service.validate_state_token(state)
+        if not is_valid:
+            raise InvalidStateTokenError(state)
+        
+        # Exchange code for tokens
+        token_response = await amazon_oauth_service.exchange_code_for_tokens(code, state)
+        
+        # Get user's Amazon profiles
+        profiles = await amazon_oauth_service.get_user_profiles(token_response.access_token)
+        
+        if not profiles:
+            raise HTTPException(
+                status_code=400,
+                detail={"error": {
+                    "code": "NO_PROFILES_FOUND",
+                    "message": "No Amazon advertising profiles found for this account",
+                    "details": {}
+                }}
+            )
+        
+        # Store tokens for each profile (user can have multiple Amazon accounts)
+        stored_profiles = []
+        for profile in profiles:
+            # Store tokens in user_accounts table
+            await token_service.store_amazon_tokens(
+                user_id=user_id,
+                profile_id=profile.profile_id,
+                tokens=token_response.dict()
+            )
+            stored_profiles.append({
+                "profile_id": profile.profile_id,
+                "country_code": profile.country_code,
+                "currency_code": profile.currency_code,
+                "account_name": profile.account_info.get("name", "Unknown")
+            })
+        
+        # Redirect to frontend with success
+        frontend_base = settings.frontend_url.rstrip('/')
+        callback_url = f"{frontend_base}/amazon/callback?success=true&user_id={user_id}&profiles={len(stored_profiles)}"
+        return RedirectResponse(url=callback_url, status_code=302)
+        
+    except OAuthException as e:
+        raise HTTPException(
+            status_code=e.status_code,
+            detail={"error": {
+                "code": e.code,
+                "message": e.message,
+                "details": e.details
+            }}
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Amazon callback processing failed", error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail={"error": {
+                "code": "AMAZON_CALLBACK_FAILED",
+                "message": "Failed to process Amazon OAuth callback",
+                "details": {"error": str(e)}
+            }}
+        )
+
+
+@router.get("/amazon/status/{user_id}")
+async def get_amazon_connection_status(
+    user_id: str,
+    x_admin_key: Optional[str] = Header(None, description="Admin key for authorization")
+):
+    """
+    Get Amazon account connection status for a user
+    
+    Returns connection status and profile information for all connected Amazon accounts.
+    """
+    try:
+        # Validate admin key
+        if x_admin_key != settings.admin_key:
+            raise HTTPException(
+                status_code=401,
+                detail={"error": {
+                    "code": "UNAUTHORIZED", 
+                    "message": "Invalid or missing admin key",
+                    "details": {}
+                }}
+            )
+        
+        # Get user's connected Amazon accounts
+        amazon_accounts = await token_service.get_user_amazon_accounts(user_id)
+        
+        connection_statuses = []
+        for account in amazon_accounts:
+            status = await token_service.get_connection_status(user_id, account["profile_id"])
+            connection_statuses.append(status)
+        
+        return {
+            "user_id": user_id,
+            "total_connections": len(connection_statuses),
+            "connections": connection_statuses,
+            "checked_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to get Amazon connection status", user_id=user_id, error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail={"error": {
+                "code": "STATUS_CHECK_FAILED",
+                "message": "Failed to check Amazon connection status",
+                "details": {"error": str(e)}
+            }}
+        )
+
+
+@router.delete("/amazon/disconnect/{user_id}/{profile_id}")
+async def disconnect_amazon_account(
+    user_id: str,
+    profile_id: int,
+    x_admin_key: Optional[str] = Header(None, description="Admin key for authorization")
+):
+    """
+    Disconnect a specific Amazon account for a user
+    
+    Removes stored tokens and connection for the specified profile.
+    """
+    try:
+        # Validate admin key
+        if x_admin_key != settings.admin_key:
+            raise HTTPException(
+                status_code=401,
+                detail={"error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "Invalid or missing admin key",
+                    "details": {}
+                }}
+            )
+        
+        # Disconnect the account
+        success = await token_service.disconnect_amazon_account(user_id, profile_id)
+        
+        if not success:
+            raise HTTPException(
+                status_code=404,
+                detail={"error": {
+                    "code": "CONNECTION_NOT_FOUND",
+                    "message": f"No Amazon connection found for user {user_id} and profile {profile_id}",
+                    "details": {}
+                }}
+            )
+        
+        return {
+            "status": "success",
+            "message": f"Amazon account {profile_id} disconnected successfully",
+            "user_id": user_id,
+            "profile_id": profile_id,
+            "disconnected_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to disconnect Amazon account", user_id=user_id, profile_id=profile_id, error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail={"error": {
+                "code": "DISCONNECT_FAILED",
+                "message": "Failed to disconnect Amazon account",
                 "details": {"error": str(e)}
             }}
         )

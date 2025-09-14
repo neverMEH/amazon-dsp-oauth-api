@@ -1,12 +1,15 @@
 """
 Clerk authentication middleware
 """
-from fastapi import Request, HTTPException, status, Depends
+from fastapi import Request, HTTPException, Depends
+from fastapi import status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional, Dict, Any, Callable
 import structlog
 
 from app.services.clerk_service import ClerkService
+from app.services.user_service import UserService
+from app.schemas.user import UserCreate
 
 logger = structlog.get_logger()
 security = HTTPBearer(auto_error=False)
@@ -18,14 +21,22 @@ class ClerkAuthMiddleware:
     def __init__(self):
         """Initialize middleware"""
         self.clerk_service = ClerkService()
+        self._user_service = None
+
+    @property
+    def user_service(self):
+        """Lazy initialization of user service"""
+        if self._user_service is None:
+            self._user_service = UserService()
+        return self._user_service
     
     async def authenticate_request(self, request: Request) -> Optional[Dict[str, Any]]:
         """
         Authenticate request using Clerk session token
-        
+
         Args:
             request: FastAPI request object
-            
+
         Returns:
             User data if authenticated, None otherwise
         """
@@ -33,30 +44,104 @@ class ClerkAuthMiddleware:
             # Try to get token from Authorization header
             auth_header = request.headers.get("Authorization")
             token = None
-            
+
+            logger.debug(f"Auth header present: {bool(auth_header)}")
+
             if auth_header:
                 token = self.extract_token_from_header(auth_header)
-            
+                logger.debug(f"Token extracted from header: {bool(token)}")
+
             # If no token in header, try session cookie
             if not token:
                 token = request.cookies.get("__session")
-            
+                logger.debug(f"Token from cookie: {bool(token)}")
+
             if not token:
+                logger.debug("No token found in request")
                 return None
-            
+
+            # Log token prefix for debugging (first 20 chars)
+            logger.debug(f"Token prefix: {token[:20]}..." if len(token) > 20 else f"Token: {token}")
+
             # Verify token with Clerk
-            user_data = await self.clerk_service.verify_session_token(token)
-            
-            if user_data:
-                logger.info(f"User authenticated: {user_data.get('sub')}")
-                return user_data
-            
+            clerk_data = await self.clerk_service.verify_session_token(token)
+
+            if clerk_data:
+                logger.info(f"User authenticated: {clerk_data.get('sub')}")
+
+                # Ensure user exists in our database
+                user_data = await self.ensure_user_exists(clerk_data)
+
+                # Combine Clerk data with user data
+                if user_data:
+                    return {
+                        **clerk_data,
+                        "user_id": user_data.get("id"),  # Add database user ID
+                        "email": user_data.get("email"),
+                        "db_user": user_data  # Include full database user data
+                    }
+                else:
+                    # If we couldn't create/find user, log error but still return Clerk data
+                    logger.error(f"Failed to sync user to database: {clerk_data.get('sub')}")
+                    # Return Clerk data without database user ID
+                    return {
+                        **clerk_data,
+                        "user_id": None,  # No database user ID available
+                        "db_user": None
+                    }
+            else:
+                logger.warning("Token verification failed")
+
             return None
-            
+
         except Exception as e:
-            logger.error(f"Authentication error: {str(e)}")
+            logger.error(f"Authentication error: {str(e)}", exc_info=True)
             return None
     
+    async def ensure_user_exists(self, clerk_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """
+        Ensure user exists in database, create if not
+
+        Args:
+            clerk_data: Verified Clerk token data
+
+        Returns:
+            User data from database or None
+        """
+        try:
+            clerk_user_id = clerk_data.get("sub")
+            if not clerk_user_id:
+                logger.error("No sub (user ID) in Clerk data")
+                return None
+
+            # Try to get existing user
+            user = await self.user_service.get_user_by_clerk_id(clerk_user_id)
+
+            if user:
+                # Update last login
+                await self.user_service.update_last_login(clerk_user_id)
+                return user.to_dict()
+
+            # User doesn't exist, create them
+            logger.info(f"Creating new user for Clerk ID: {clerk_user_id}")
+
+            # Get user details from Clerk if needed
+            # For now, use data from the token
+            user_create = UserCreate(
+                clerk_user_id=clerk_user_id,
+                email=clerk_data.get("email") or f"{clerk_user_id}@clerk.user",
+                first_name=clerk_data.get("first_name") or "",
+                last_name=clerk_data.get("last_name") or "",
+                profile_image_url=clerk_data.get("image_url")
+            )
+
+            new_user = await self.user_service.create_user(user_create)
+            return new_user.to_dict() if new_user else None
+
+        except Exception as e:
+            logger.error(f"Error ensuring user exists: {str(e)}", exc_info=True)
+            return None
+
     def extract_token_from_header(self, auth_header: str) -> Optional[str]:
         """
         Extract token from Authorization header
@@ -237,15 +322,24 @@ async def verify_clerk_webhook(request: Request) -> bool:
 def get_user_context(user_data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Extract useful context from user data for application use
-    
+
     Args:
         user_data: Raw user data from Clerk
-        
+
     Returns:
         User context for application
     """
+    # Get the database user ID if available
+    db_user_id = None
+    if "user_id" in user_data:
+        # Database user ID is already in user_data (from authenticate_request)
+        db_user_id = user_data.get("user_id")
+    elif "db_user" in user_data and user_data["db_user"]:
+        # Extract from db_user object
+        db_user_id = user_data["db_user"].get("id")
+
     return {
-        "user_id": user_data.get("sub"),
+        "user_id": db_user_id,  # This should be the database UUID
         "clerk_user_id": user_data.get("sub"),
         "email": user_data.get("email"),
         "email_verified": user_data.get("email_verified", False),
@@ -255,5 +349,6 @@ def get_user_context(user_data: Dict[str, Any]) -> Dict[str, Any]:
         "profile_image": user_data.get("picture"),
         "is_authenticated": True,
         "auth_time": user_data.get("auth_time"),
-        "session_id": user_data.get("sid")
+        "session_id": user_data.get("sid"),
+        "db_user": user_data.get("db_user")  # Include full database user data
     }

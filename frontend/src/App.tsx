@@ -7,6 +7,9 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { Toaster } from '@/components/ui/toaster';
+import { TokenResponse } from '@/services/api';
+import { AccountManagementPage } from '@/components/account/AccountManagementPage';
+import { SettingsPage } from '@/pages/Settings';
 
 // Legacy components for backward compatibility
 import { OAuthLogin } from '@/components/OAuthLogin';
@@ -79,9 +82,8 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 dark:from-slate-900 dark:to-slate-800 p-6">
-                        <div className="max-w-4xl mx-auto">
-                          <h1 className="text-3xl font-bold mb-6">Account Management</h1>
-                          <p className="text-muted-foreground">Manage your Amazon DSP accounts here.</p>
+                        <div className="max-w-7xl mx-auto">
+                          <AccountManagementPage />
                         </div>
                       </div>
                     </ProtectedRoute>
@@ -92,9 +94,8 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 dark:from-slate-900 dark:to-slate-800 p-6">
-                        <div className="max-w-4xl mx-auto">
-                          <h1 className="text-3xl font-bold mb-6">Settings</h1>
-                          <p className="text-muted-foreground">Configure your application settings.</p>
+                        <div className="max-w-7xl mx-auto">
+                          <SettingsPage />
                         </div>
                       </div>
                     </ProtectedRoute>
@@ -117,7 +118,13 @@ function App() {
                 {/* Legacy routes for backward compatibility */}
                 <Route path="/oauth-login" element={<OAuthLogin />} />
                 <Route path="/callback" element={<OAuthCallback />} />
-                <Route path="/token-dashboard" element={<TokenDashboard />} />
+                <Route path="/token-dashboard" element={<TokenDashboard tokens={{
+                  access_token: '',
+                  refresh_token: '',
+                  expires_in: 0,
+                  scope: '',
+                  token_type: ''
+                } as TokenResponse} />} />
                 <Route path="/auth-dashboard" element={<AuthDashboard />} />
                 <Route path="/status-demo" element={<ConnectionStatusDemo />} />
 

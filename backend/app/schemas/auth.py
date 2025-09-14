@@ -2,7 +2,7 @@
 Authentication schemas
 """
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, Dict, Any
 from datetime import datetime
 
 
@@ -93,3 +93,43 @@ class HealthResponse(BaseModel):
                 }
             }
         }
+
+
+class AmazonTokenResponse(BaseModel):
+    """Amazon OAuth token response"""
+    access_token: str = Field(..., description="Amazon access token")
+    refresh_token: str = Field(..., description="Amazon refresh token")
+    token_type: str = Field(default="bearer", description="Token type")
+    expires_in: int = Field(..., description="Token expiration in seconds")
+    scope: str = Field(..., description="Granted OAuth scopes")
+
+
+class AmazonAccountInfo(BaseModel):
+    """Amazon advertising account information"""
+    profile_id: int = Field(..., description="Amazon profile ID")
+    country_code: str = Field(..., description="Account country code")
+    currency_code: str = Field(..., description="Account currency code")
+    timezone: str = Field(default="UTC", description="Account timezone")
+    account_info: Dict[str, Any] = Field(default={}, description="Additional account metadata")
+
+
+class AmazonConnectionRequest(BaseModel):
+    """Amazon account connection request"""
+    user_id: str = Field(..., description="Clerk user ID")
+    profile_id: int = Field(..., description="Amazon profile ID to connect")
+
+
+class AmazonConnectionStatus(BaseModel):
+    """Amazon account connection status"""
+    connected: bool = Field(..., description="Whether account is connected")
+    profile_id: Optional[int] = Field(None, description="Amazon profile ID")
+    needs_refresh: bool = Field(default=False, description="Whether token needs refresh")
+    expires_at: Optional[datetime] = Field(None, description="Token expiration")
+    last_updated: Optional[datetime] = Field(None, description="Last connection update")
+    error: Optional[str] = Field(None, description="Connection error message")
+
+
+class AmazonDisconnectionRequest(BaseModel):
+    """Amazon account disconnection request"""
+    user_id: str = Field(..., description="Clerk user ID") 
+    profile_id: int = Field(..., description="Amazon profile ID to disconnect")

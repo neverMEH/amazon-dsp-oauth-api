@@ -100,3 +100,53 @@ class AmazonAccountWithTokens(AmazonAccountResponse):
     
     class Config:
         from_attributes = True
+
+
+class AmazonAccountDetail(AmazonAccountResponse):
+    """Detailed Amazon account information including profiles and health status"""
+    profiles: Optional[list] = Field(default_factory=list, description="Associated advertising profiles")
+    health_status: Optional[str] = Field(None, description="Account health status")
+    last_refresh_time: Optional[str] = Field(None, description="Last token refresh time")
+    token_expires_in: Optional[str] = Field(None, description="Time until token expiration")
+    needs_reauth: bool = Field(False, description="Whether account needs re-authorization")
+    
+    class Config:
+        from_attributes = True
+
+
+class AccountHealthStatus(BaseModel):
+    """Account health and token status"""
+    account_id: str = Field(..., description="Account UUID")
+    status: Literal["healthy", "warning", "expired", "error"] = Field(..., description="Health status")
+    token_expires_in: str = Field(..., description="Time until token expiration")
+    last_refresh: str = Field(..., description="Time since last refresh")
+    needs_reauth: bool = Field(..., description="Whether re-authorization is needed")
+    message: Optional[str] = Field(None, description="Additional status message")
+
+
+class AccountDisconnectRequest(BaseModel):
+    """Request to disconnect an Amazon account"""
+    revoke_tokens: bool = Field(False, description="Whether to revoke OAuth tokens on disconnect")
+    reason: Optional[str] = Field(None, description="Reason for disconnection")
+
+
+class AccountReauthorizeRequest(BaseModel):
+    """Request to re-authorize an Amazon account"""
+    force: bool = Field(False, description="Force re-authorization even if token is valid")
+    redirect_uri: Optional[str] = Field(None, description="Custom redirect URI after re-authorization")
+
+
+class UserPreferences(BaseModel):
+    """User preferences for account management"""
+    notifications_enabled: bool = Field(True, description="Enable notifications")
+    auto_refresh_tokens: bool = Field(True, description="Automatically refresh expiring tokens")
+    default_account_id: Optional[str] = Field(None, description="Default account ID")
+    dashboard_layout: Literal["grid", "list"] = Field("grid", description="Dashboard layout preference")
+    timezone: str = Field("UTC", description="User timezone")
+
+
+class UserSettings(BaseModel):
+    """User settings response"""
+    user_id: str = Field(..., description="User ID")
+    preferences: UserPreferences = Field(..., description="User preferences")
+    updated_at: Optional[str] = Field(None, description="Last update timestamp")

@@ -8,7 +8,7 @@ from supabase import Client
 
 from app.models.user import User
 from app.models.amazon_account import AmazonAccount
-from app.db.base import get_supabase_client
+from app.db.base import get_supabase_client, get_supabase_service_client
 from app.schemas.user import UserCreate, UserUpdate
 from app.schemas.amazon_account import AmazonAccountCreate, AmazonAccountUpdate
 
@@ -18,9 +18,19 @@ logger = structlog.get_logger()
 class UserService:
     """Service for managing user operations"""
     
-    def __init__(self, supabase_client: Optional[Client] = None):
-        """Initialize user service"""
-        self.client = supabase_client or get_supabase_client()
+    def __init__(self, supabase_client: Optional[Client] = None, use_service_role: bool = True):
+        """
+        Initialize user service
+
+        Args:
+            supabase_client: Optional Supabase client instance
+            use_service_role: If True, use service role for backend operations (default: True)
+        """
+        if supabase_client:
+            self.client = supabase_client
+        else:
+            # Use service role client for user operations to bypass RLS
+            self.client = get_supabase_service_client() if use_service_role else get_supabase_client()
     
     async def create_user(self, user_data: UserCreate) -> User:
         """

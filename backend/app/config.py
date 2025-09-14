@@ -18,14 +18,15 @@ class Settings(BaseSettings):
     amazon_client_id: str
     amazon_client_secret: str
     amazon_oauth_redirect_uri: Optional[str] = None
-    amazon_scope: str = "advertising::campaign_management"
+    amazon_scope: str = "advertising::campaign_management advertising::account_management advertising::dsp_campaigns advertising::reporting"
     
     # Encryption
     fernet_key: str
     
     # Supabase
     supabase_url: str
-    supabase_key: str
+    supabase_key: str  # Anon key for client-side operations
+    supabase_service_role_key: Optional[str] = None  # Service role key for backend operations
     
     # Clerk Authentication
     clerk_publishable_key: Optional[str] = None
@@ -60,7 +61,7 @@ class Settings(BaseSettings):
     retry_backoff_base: int = 2
     
     # API Version
-    api_version: str = "1.0.0"
+    api_version: str = "1.0.1"
     
     class Config:
         env_file = BASE_DIR / ".env"

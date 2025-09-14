@@ -13,7 +13,8 @@ from pathlib import Path
 
 from app.config import settings
 from app.utils.logger import configure_logging
-from app.api.v1 import auth, health, users, webhooks
+from app.api.v1 import auth, health, users, webhooks, accounts
+from app.api.v1 import settings as settings_router
 from app.middleware.error_handler import (
     oauth_exception_handler,
     http_exception_handler,
@@ -22,6 +23,7 @@ from app.middleware.error_handler import (
 )
 from app.core.exceptions import OAuthException
 from app.services.refresh_service import start_refresh_service, stop_refresh_service
+from app.services.token_refresh_scheduler import get_token_refresh_scheduler
 
 # Configure logging
 logger = configure_logging()
@@ -34,15 +36,31 @@ async def lifespan(app: FastAPI):
     """
     # Startup
     logger.info("Starting application", version=settings.api_version)
-    
+
     # Start background token refresh service
     refresh_task = await start_refresh_service()
-    
+
+    # Start token refresh scheduler
+    try:
+        token_scheduler = get_token_refresh_scheduler()
+        await token_scheduler.start()
+        logger.info("Token refresh scheduler started")
+    except Exception as e:
+        logger.error(f"Failed to start token refresh scheduler: {e}")
+
     yield
-    
+
     # Shutdown
     logger.info("Shutting down application")
-    
+
+    # Stop token refresh scheduler
+    try:
+        token_scheduler = get_token_refresh_scheduler()
+        await token_scheduler.stop()
+        logger.info("Token refresh scheduler stopped")
+    except Exception as e:
+        logger.error(f"Error stopping token refresh scheduler: {e}")
+
     # Stop background services
     await stop_refresh_service(refresh_task)
 
@@ -58,9 +76,16 @@ app = FastAPI(
 )
 
 # Configure CORS
+cors_origins = [
+    settings.frontend_url,
+    "https://amazon-dsp-oauth-api-production.up.railway.app",
+    "http://localhost:3000",
+    "http://localhost:5173"
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.frontend_url],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -77,6 +102,8 @@ app.include_router(health.router, prefix="/api/v1")
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
 app.include_router(webhooks.router, prefix="/api/v1/webhooks", tags=["webhooks"])
+app.include_router(accounts.router, prefix="/api/v1", tags=["accounts"])
+app.include_router(settings_router.router, prefix="/api/v1", tags=["settings"])
 
 # API endpoints
 @app.get("/api")
@@ -103,6 +130,16 @@ async def api_info():
             },
             "webhooks": {
                 "clerk": "/api/v1/webhooks/clerk"
+            },
+            "accounts": {
+                "list": "/api/v1/accounts",
+                "amazon_ads_accounts": "/api/v1/accounts/amazon-ads-accounts",
+                "amazon_profiles": "/api/v1/accounts/amazon-profiles",
+                "details": "/api/v1/accounts/{account_id}",
+                "disconnect": "/api/v1/accounts/{account_id}/disconnect",
+                "health": "/api/v1/accounts/health",
+                "reauthorize": "/api/v1/accounts/{account_id}/reauthorize",
+                "batch": "/api/v1/accounts/batch"
             }
         }
     }
