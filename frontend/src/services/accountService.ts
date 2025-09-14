@@ -98,8 +98,9 @@ class AccountService {
         autoRefreshTokens: response.preferences?.auto_refresh_tokens ?? true,
         defaultAccountId: response.preferences?.default_account_id ?? null,
         notificationPreferences: {
-          email: response.preferences?.email_notifications ?? true,
-          inApp: response.preferences?.notifications_enabled ?? true,
+          emailOnTokenExpiry: response.preferences?.email_notifications ?? true,
+          emailOnTokenRefresh: response.preferences?.email_notifications ?? true,
+          emailOnConnectionIssue: response.preferences?.email_notifications ?? true,
         },
         dashboardLayout: (response.preferences?.dashboard_layout ?? 'grid') as 'grid' | 'list',
       }
@@ -109,12 +110,17 @@ class AccountService {
   // Update user settings
   async updateSettings(settings: UpdateSettingsRequest): Promise<SettingsResponse> {
     // Transform frontend settings to backend preferences format
+    // Use any email notification preference to set the general email_notifications flag
+    const emailNotifications = settings.notificationPreferences?.emailOnTokenExpiry ??
+                               settings.notificationPreferences?.emailOnTokenRefresh ??
+                               settings.notificationPreferences?.emailOnConnectionIssue ?? true;
+
     const requestBody = {
       preferences: {
         auto_refresh_tokens: settings.autoRefreshTokens,
         default_account_id: settings.defaultAccountId,
-        email_notifications: settings.notificationPreferences?.email,
-        notifications_enabled: settings.notificationPreferences?.inApp,
+        email_notifications: emailNotifications,
+        notifications_enabled: true, // Always enabled for now
         dashboard_layout: settings.dashboardLayout,
       }
     };
@@ -130,8 +136,9 @@ class AccountService {
         autoRefreshTokens: response.preferences?.auto_refresh_tokens ?? true,
         defaultAccountId: response.preferences?.default_account_id ?? null,
         notificationPreferences: {
-          email: response.preferences?.email_notifications ?? true,
-          inApp: response.preferences?.notifications_enabled ?? true,
+          emailOnTokenExpiry: response.preferences?.email_notifications ?? true,
+          emailOnTokenRefresh: response.preferences?.email_notifications ?? true,
+          emailOnConnectionIssue: response.preferences?.email_notifications ?? true,
         },
         dashboardLayout: (response.preferences?.dashboard_layout ?? 'grid') as 'grid' | 'list',
       }
