@@ -124,14 +124,32 @@ class ClerkService:
             logger.debug(f"Publishable key prefix: {self.publishable_key[:20]}...")
 
             # Get the instance domain from the publishable key
-            # The format is pk_[env]_[instance_id]
+            # The format is pk_[env]_[encoded_domain]
+            # The encoded part is base64 encoded domain
             parts = self.publishable_key.split('_')
             if len(parts) < 3:
                 logger.error(f"Invalid Clerk publishable key format. Parts: {parts}")
                 return None
 
-            instance_id = parts[2].split('.')[0]  # Remove any domain suffix
             env = parts[1]  # 'test' or 'live'
+
+            # The third part is base64 encoded domain - decode it
+            import base64
+            try:
+                encoded_domain = parts[2]
+                # Add padding if needed for base64 decoding
+                padding = 4 - len(encoded_domain) % 4
+                if padding != 4:
+                    encoded_domain += '=' * padding
+
+                decoded = base64.b64decode(encoded_domain).decode('utf-8')
+                # Extract just the subdomain (first part before .clerk.accounts.dev)
+                instance_id = decoded.split('.')[0]
+                logger.debug(f"Decoded domain: {decoded}, instance: {instance_id}")
+            except Exception as e:
+                logger.error(f"Failed to decode instance from key: {e}")
+                # Fallback: try using it directly
+                instance_id = parts[2].split('.')[0]
 
             logger.debug(f"Clerk instance: {instance_id}, env: {env}")
 
