@@ -9,7 +9,7 @@ import structlog
 from pydantic import BaseModel, Field
 from uuid import uuid4
 
-from app.middleware.clerk_auth import RequireAuth
+from app.middleware.clerk_auth import RequireAuth, get_user_context
 from app.services.account_service import account_service
 from app.services.amazon_oauth_service import amazon_oauth_service
 from app.services.token_service import token_service
@@ -179,20 +179,21 @@ async def list_amazon_ads_accounts(
 ):
     """
     List Amazon Advertising accounts using the Account Management API
-    
+
     **Endpoint Details:**
-    - URL: GET https://advertising-api.amazon.com/am/accounts
-    - Method: GET
+    - URL: POST https://advertising-api.amazon.com/adsAccounts/list
+    - Method: POST
     - Version: v1
+    - Content-Type: application/vnd.listaccountsresource.v1+json
     - Required Headers: Authorization, Amazon-Advertising-API-ClientId
-    
+
     **Amazon API Documentation:**
     https://advertising.amazon.com/API/docs/en-us/account-management#tag/Account/operation/ListAdsAccounts
-    
+
     **Required Permissions:**
     - User must have valid Amazon OAuth tokens
     - Scopes: advertising::account_management
-    
+
     **Response Structure:**
     Returns accounts with full details from Amazon's Account Management API,
     including account type (ADVERTISER/AGENCY), status, marketplace info, and linked profiles.
@@ -206,7 +207,16 @@ async def list_amazon_ads_accounts(
     - 403: Insufficient permissions - missing account_management scope
     - 429: Rate limit exceeded - check Retry-After header
     """
-    user_id = current_user["user_id"]
+    # Get user ID from context - use the database UUID
+    user_context = current_user
+    user_id = user_context.get("user_id")  # This is the database UUID
+
+    if not user_id:
+        # If no database user ID, user hasn't been synced yet
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found in database. Please log out and log in again."
+        )
     
     try:
         # Get user's token
@@ -324,7 +334,16 @@ async def list_amazon_profiles(
     - Returns profiles with account information from Amazon's API
     - Each profile represents an advertising account
     """
-    user_id = current_user["user_id"]
+    # Get user ID from context - use the database UUID
+    user_context = current_user
+    user_id = user_context.get("user_id")  # This is the database UUID
+
+    if not user_id:
+        # If no database user ID, user hasn't been synced yet
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found in database. Please log out and log in again."
+        )
     
     try:
         # Get user's token
@@ -438,7 +457,16 @@ async def list_accounts(
     
     Returns accounts stored in the database with pagination support.
     """
-    user_id = current_user["user_id"]
+    # Get user ID from context - use the database UUID
+    user_context = current_user
+    user_id = user_context.get("user_id")  # This is the database UUID
+
+    if not user_id:
+        # If no database user ID, user hasn't been synced yet
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found in database. Please log out and log in again."
+        )
     
     try:
         # Build query
@@ -491,7 +519,16 @@ async def get_account_details(
     
     Includes account metadata and optionally fetches current profile information from Amazon API.
     """
-    user_id = current_user["user_id"]
+    # Get user ID from context - use the database UUID
+    user_context = current_user
+    user_id = user_context.get("user_id")  # This is the database UUID
+
+    if not user_id:
+        # If no database user ID, user hasn't been synced yet
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found in database. Please log out and log in again."
+        )
     
     try:
         # Get account from database
@@ -564,7 +601,16 @@ async def disconnect_account(
     
     This will mark the account as inactive but preserve the record for audit purposes.
     """
-    user_id = current_user["user_id"]
+    # Get user ID from context - use the database UUID
+    user_context = current_user
+    user_id = user_context.get("user_id")  # This is the database UUID
+
+    if not user_id:
+        # If no database user ID, user hasn't been synced yet
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found in database. Please log out and log in again."
+        )
     
     try:
         # Verify account ownership
@@ -620,7 +666,16 @@ async def get_accounts_health(
     
     Checks token validity and last sync status for each account.
     """
-    user_id = current_user["user_id"]
+    # Get user ID from context - use the database UUID
+    user_context = current_user
+    user_id = user_context.get("user_id")  # This is the database UUID
+
+    if not user_id:
+        # If no database user ID, user hasn't been synced yet
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found in database. Please log out and log in again."
+        )
     
     try:
         # Get all user accounts
@@ -703,7 +758,16 @@ async def reauthorize_account(
     
     Attempts to refresh the authentication token for the account.
     """
-    user_id = current_user["user_id"]
+    # Get user ID from context - use the database UUID
+    user_context = current_user
+    user_id = user_context.get("user_id")  # This is the database UUID
+
+    if not user_id:
+        # If no database user ID, user hasn't been synced yet
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found in database. Please log out and log in again."
+        )
     
     try:
         # Verify account ownership
@@ -810,7 +874,16 @@ async def batch_operations(
     - disconnect: Disconnect multiple accounts
     - update: Update account metadata
     """
-    user_id = current_user["user_id"]
+    # Get user ID from context - use the database UUID
+    user_context = current_user
+    user_id = user_context.get("user_id")  # This is the database UUID
+
+    if not user_id:
+        # If no database user ID, user hasn't been synced yet
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found in database. Please log out and log in again."
+        )
     
     try:
         results = []
