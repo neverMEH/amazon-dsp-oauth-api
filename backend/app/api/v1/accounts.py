@@ -227,6 +227,9 @@ async def list_amazon_ads_accounts(
     - 403: Insufficient permissions - missing account_management scope
     - 429: Rate limit exceeded - check Retry-After header
     """
+    # Use service role client for database operations to bypass RLS
+    supabase = get_supabase_service_client()
+
     # Get user ID from context - use the database UUID
     user_context = current_user
     user_id = user_context.get("user_id")  # This is the database UUID
@@ -384,6 +387,9 @@ async def list_amazon_profiles(
     - Returns profiles with account information from Amazon's API
     - Each profile represents an advertising account
     """
+    # Use service role client for database operations to bypass RLS
+    supabase = get_supabase_service_client()
+
     # Get user ID from context - use the database UUID
     user_context = current_user
     user_id = user_context.get("user_id")  # This is the database UUID
@@ -506,6 +512,9 @@ async def list_accounts(
     
     Returns accounts stored in the database with pagination support.
     """
+    # Use service role client for database operations to bypass RLS
+    supabase = get_supabase_service_client()
+
     # Get user ID from context - use the database UUID
     user_context = current_user
     user_id = user_context.get("user_id")  # This is the database UUID
@@ -567,6 +576,9 @@ async def get_account_details(
     
     Includes account metadata and optionally fetches current profile information from Amazon API.
     """
+    # Use service role client for database operations to bypass RLS
+    supabase = get_supabase_service_client()
+
     # Get user ID from context - use the database UUID
     user_context = current_user
     user_id = user_context.get("user_id")  # This is the database UUID
@@ -648,6 +660,9 @@ async def disconnect_account(
     
     This will mark the account as inactive but preserve the record for audit purposes.
     """
+    # Use service role client for database operations to bypass RLS
+    supabase = get_supabase_service_client()
+
     # Get user ID from context - use the database UUID
     user_context = current_user
     user_id = user_context.get("user_id")  # This is the database UUID
@@ -712,6 +727,9 @@ async def get_accounts_health(
     
     Checks token validity and last sync status for each account.
     """
+    # Use service role client for database operations to bypass RLS
+    supabase = get_supabase_service_client()
+
     # Get user ID from context - use the database UUID
     user_context = current_user
     user_id = user_context.get("user_id")  # This is the database UUID
@@ -803,6 +821,9 @@ async def reauthorize_account(
     
     Attempts to refresh the authentication token for the account.
     """
+    # Use service role client for database operations to bypass RLS
+    supabase = get_supabase_service_client()
+
     # Get user ID from context - use the database UUID
     user_context = current_user
     user_id = user_context.get("user_id")  # This is the database UUID
@@ -918,6 +939,9 @@ async def batch_operations(
     - disconnect: Disconnect multiple accounts
     - update: Update account metadata
     """
+    # Use service role client for database operations to bypass RLS
+    supabase = get_supabase_service_client()
+
     # Get user ID from context - use the database UUID
     user_context = current_user
     user_id = user_context.get("user_id")  # This is the database UUID
@@ -1079,6 +1103,9 @@ async def manual_token_refresh(
     and can be used to proactively refresh tokens before they expire.
     """
     from app.services.token_refresh_scheduler import get_token_refresh_scheduler
+
+    # Use service role client for database operations to bypass RLS
+    supabase = get_supabase_service_client()
 
     # Get user ID from context
     user_context = current_user
