@@ -104,7 +104,12 @@ async def get_user_settings(
         
         if response.data:
             settings_data = response.data
-            preferences = json.loads(settings_data.get("preferences", "{}"))
+            # Handle both string and dict formats from database
+            prefs_data = settings_data.get("preferences", "{}")
+            if isinstance(prefs_data, str):
+                preferences = json.loads(prefs_data)
+            else:
+                preferences = prefs_data if prefs_data else {}
         else:
             # Return default settings if none exist
             preferences = get_default_preferences()
@@ -187,7 +192,12 @@ async def update_user_settings(
             response = type('obj', (object,), {'data': None})()
         
         if response.data:
-            existing_preferences = json.loads(response.data.get("preferences", "{}"))
+            # Handle both string and dict formats from database
+            prefs_data = response.data.get("preferences", "{}")
+            if isinstance(prefs_data, str):
+                existing_preferences = json.loads(prefs_data)
+            else:
+                existing_preferences = prefs_data if prefs_data else {}
         else:
             existing_preferences = get_default_preferences()
         
