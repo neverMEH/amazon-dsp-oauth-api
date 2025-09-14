@@ -13,7 +13,7 @@ from app.middleware.clerk_auth import RequireAuth, get_user_context
 from app.services.account_service import account_service
 from app.services.amazon_oauth_service import amazon_oauth_service
 from app.services.token_service import token_service
-from app.db.base import get_supabase_client
+from app.db.base import get_supabase_client, get_supabase_service_client
 from app.core.exceptions import TokenRefreshError, RateLimitError
 from app.models.amazon_account import AmazonAccount
 
@@ -189,8 +189,7 @@ async def refresh_token_if_needed(user_id: str, token_data: Dict, supabase) -> D
 async def list_amazon_ads_accounts(
     current_user: Dict = Depends(RequireAuth),
     next_token: Optional[str] = Query(None, description="Pagination token for next page"),
-    max_results: int = Query(100, ge=1, le=100, description="Maximum results per page"),
-    supabase = Depends(get_supabase_client)
+    max_results: int = Query(100, ge=1, le=100, description="Maximum results per page")
 ):
     """
     List Amazon Advertising accounts using the Account Management API v3.0
@@ -238,7 +237,10 @@ async def list_amazon_ads_accounts(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found in database. Please log out and log in again."
         )
-    
+
+    # Use service role client for database operations to bypass RLS
+    supabase = get_supabase_service_client()
+
     try:
         # Get user's token
         token_data = await get_user_token(user_id, supabase)
@@ -365,7 +367,6 @@ async def list_amazon_ads_accounts(
 @router.get("/amazon-profiles", response_model=List[AmazonProfileResponse])
 async def list_amazon_profiles(
     current_user: Dict = Depends(RequireAuth),
-    supabase = Depends(get_supabase_client)
 ):
     """
     List Amazon Advertising profiles using the Amazon Ads API
@@ -499,7 +500,6 @@ async def list_accounts(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
     account_status: Optional[str] = Query(None, description="Filter by status", alias="status"),
-    supabase = Depends(get_supabase_client)
 ):
     """
     List all connected Amazon accounts for the current user
@@ -561,7 +561,6 @@ async def get_account_details(
     account_id: str = Path(..., description="Account ID"),
     current_user: Dict = Depends(RequireAuth),
     include_profiles: bool = Query(False, description="Include associated profiles"),
-    supabase = Depends(get_supabase_client)
 ):
     """
     Get detailed information for a specific account
@@ -643,7 +642,6 @@ async def get_account_details(
 async def disconnect_account(
     account_id: str = Path(..., description="Account ID to disconnect"),
     current_user: Dict = Depends(RequireAuth),
-    supabase = Depends(get_supabase_client)
 ):
     """
     Disconnect an Amazon account
@@ -708,7 +706,6 @@ async def disconnect_account(
 @router.get("/health", response_model=List[AccountHealthStatus])
 async def get_accounts_health(
     current_user: Dict = Depends(RequireAuth),
-    supabase = Depends(get_supabase_client)
 ):
     """
     Get health status of all connected accounts
@@ -800,7 +797,6 @@ async def reauthorize_account(
     account_id: str = Path(..., description="Account ID to re-authorize"),
     request: ReauthorizeRequest = Body(...),
     current_user: Dict = Depends(RequireAuth),
-    supabase = Depends(get_supabase_client)
 ):
     """
     Re-authorize an expired account
@@ -913,7 +909,6 @@ async def reauthorize_account(
 async def batch_operations(
     batch: BatchOperation = Body(...),
     current_user: Dict = Depends(RequireAuth),
-    supabase = Depends(get_supabase_client)
 ):
     """
     Perform batch operations on multiple accounts
@@ -1076,7 +1071,6 @@ async def batch_operations(
 @router.post("/refresh-token", response_model=Dict[str, Any])
 async def manual_token_refresh(
     current_user: Dict = Depends(RequireAuth),
-    supabase = Depends(get_supabase_client)
 ):
     """
     Manually trigger token refresh for the current user
