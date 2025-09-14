@@ -15,7 +15,7 @@ from app.schemas.settings import (
     UserPreferences,
     DefaultSettings
 )
-from app.db.base import get_supabase_client
+from app.db.base import get_supabase_client, get_supabase_service_client
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/settings", tags=["User Settings"])
@@ -89,7 +89,8 @@ async def get_user_settings(
 
         # Get settings from database or return defaults
         logger.info("Getting settings from database", user_id=user.id)
-        supabase = get_supabase_client()
+        # Use service role client to bypass RLS policies
+        supabase = get_supabase_service_client()
 
         # Query user_settings table
         try:
@@ -175,7 +176,8 @@ async def update_user_settings(
                     detail="Failed to create user in database"
                 )
         
-        supabase = get_supabase_client()
+        # Use service role client to bypass RLS policies
+        supabase = get_supabase_service_client()
         
         # Get existing settings
         try:
@@ -274,7 +276,8 @@ async def reset_user_settings(
         default_prefs = get_default_preferences()
         
         # Update in database
-        supabase = get_supabase_client()
+        # Use service role client to bypass RLS policies
+        supabase = get_supabase_service_client()
         
         updated_settings = {
             "preferences": json.dumps(default_prefs),
