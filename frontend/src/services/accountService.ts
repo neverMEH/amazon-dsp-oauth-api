@@ -91,18 +91,38 @@ class AccountService {
   async getSettings(): Promise<SettingsResponse> {
     const response = await this.fetchWithAuth('/api/v1/settings');
 
+    // Log the response for debugging
+    console.log('Settings API response:', response);
+
+    // Handle case where response might not have preferences
+    if (!response || !response.preferences) {
+      console.warn('Invalid settings response, using defaults', response);
+      return {
+        settings: {
+          autoRefreshTokens: true,
+          defaultAccountId: null,
+          notificationPreferences: {
+            emailOnTokenExpiry: true,
+            emailOnTokenRefresh: true,
+            emailOnConnectionIssue: true,
+          },
+          dashboardLayout: 'grid',
+        }
+      };
+    }
+
     // Transform backend response to match frontend expectations
     // Backend returns 'preferences' but frontend expects 'settings'
     return {
       settings: {
-        autoRefreshTokens: response.preferences?.auto_refresh_tokens ?? true,
-        defaultAccountId: response.preferences?.default_account_id ?? null,
+        autoRefreshTokens: response.preferences.auto_refresh_tokens ?? true,
+        defaultAccountId: response.preferences.default_account_id ?? null,
         notificationPreferences: {
-          emailOnTokenExpiry: response.preferences?.email_notifications ?? true,
-          emailOnTokenRefresh: response.preferences?.email_notifications ?? true,
-          emailOnConnectionIssue: response.preferences?.email_notifications ?? true,
+          emailOnTokenExpiry: response.preferences.email_notifications ?? true,
+          emailOnTokenRefresh: response.preferences.email_notifications ?? true,
+          emailOnConnectionIssue: response.preferences.email_notifications ?? true,
         },
-        dashboardLayout: (response.preferences?.dashboard_layout ?? 'grid') as 'grid' | 'list',
+        dashboardLayout: (response.preferences.dashboard_layout ?? 'grid') as 'grid' | 'list',
       }
     };
   }
@@ -130,17 +150,37 @@ class AccountService {
       body: JSON.stringify(requestBody),
     });
 
+    // Log the response for debugging
+    console.log('Settings update response:', response);
+
+    // Handle case where response might not have preferences
+    if (!response || !response.preferences) {
+      console.warn('Invalid settings update response, using provided values', response);
+      return {
+        settings: {
+          autoRefreshTokens: settings.autoRefreshTokens ?? true,
+          defaultAccountId: settings.defaultAccountId ?? null,
+          notificationPreferences: {
+            emailOnTokenExpiry: emailNotifications,
+            emailOnTokenRefresh: emailNotifications,
+            emailOnConnectionIssue: emailNotifications,
+          },
+          dashboardLayout: settings.dashboardLayout ?? 'grid',
+        }
+      };
+    }
+
     // Transform backend response to match frontend expectations
     return {
       settings: {
-        autoRefreshTokens: response.preferences?.auto_refresh_tokens ?? true,
-        defaultAccountId: response.preferences?.default_account_id ?? null,
+        autoRefreshTokens: response.preferences.auto_refresh_tokens ?? true,
+        defaultAccountId: response.preferences.default_account_id ?? null,
         notificationPreferences: {
-          emailOnTokenExpiry: response.preferences?.email_notifications ?? true,
-          emailOnTokenRefresh: response.preferences?.email_notifications ?? true,
-          emailOnConnectionIssue: response.preferences?.email_notifications ?? true,
+          emailOnTokenExpiry: response.preferences.email_notifications ?? true,
+          emailOnTokenRefresh: response.preferences.email_notifications ?? true,
+          emailOnConnectionIssue: response.preferences.email_notifications ?? true,
         },
-        dashboardLayout: (response.preferences?.dashboard_layout ?? 'grid') as 'grid' | 'list',
+        dashboardLayout: (response.preferences.dashboard_layout ?? 'grid') as 'grid' | 'list',
       }
     };
   }

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Settings API</title>
+</head>
+<body>
+    <h1>Settings API Test</h1>
+    <button onclick="testSettings()">Test Settings Endpoint</button>
+    <pre id="output"></pre>
+
+    <script>
+    async function testSettings() {
+        const output = document.getElementById('output');
+
+        try {
+            // Get Clerk token
+            const clerk = window.Clerk;
+            if (!clerk || !clerk.session) {
+                output.textContent = 'Clerk not initialized';
+                return;
+            }
+
+            const token = await clerk.session.getToken();
+            output.textContent = 'Got token: ' + (token ? 'Yes' : 'No') + '\n\n';
+
+            // Call settings endpoint
+            const response = await fetch('https://amazon-dsp-oauth-api-production.up.railway.app/api/v1/settings', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            output.textContent += 'Status: ' + response.status + '\n';
+            output.textContent += 'Status Text: ' + response.statusText + '\n\n';
+
+            const text = await response.text();
+            output.textContent += 'Response body:\n' + text + '\n\n';
+
+            // Try to parse as JSON
+            try {
+                const json = JSON.parse(text);
+                output.textContent += 'Parsed JSON:\n' + JSON.stringify(json, null, 2);
+            } catch (e) {
+                output.textContent += 'Failed to parse as JSON: ' + e.message;
+            }
+
+        } catch (error) {
+            output.textContent = 'Error: ' + error.message + '\n' + error.stack;
+        }
+    }
+
+    // Load Clerk
+    window.addEventListener('load', async () => {
+        const script = document.createElement('script');
+        script.src = 'https://actual-possum-83.clerk.accounts.dev/npm/@clerk/clerk-js@latest/dist/clerk.browser.js';
+        script.onload = async () => {
+            const clerk = new window.Clerk('pk_test_YWN0dWFsLXBvc3N1bS04My5jbGVyay5hY2NvdW50cy5kZXYk');
+            await clerk.load();
+            console.log('Clerk loaded');
+        };
+        document.head.appendChild(script);
+    });
+    </script>
+</body>
+</html>
