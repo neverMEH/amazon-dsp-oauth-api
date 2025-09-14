@@ -50,6 +50,7 @@ This roadmap outlines the development plan for building a comprehensive Amazon D
 - [x] Amazon account synchronization - OAuth flow for multiple accounts `M` ✅
 - [x] Account management interface - View and manage connected accounts `M` ✅
 - [x] Per-user token storage - Isolated refresh tokens for each account `S` ✅
+- [x] Amazon Ads API v3.0 alignment - Fixed response parsing and field mappings `H` ✅ (2025-09-14)
 
 ### Dependencies
 
