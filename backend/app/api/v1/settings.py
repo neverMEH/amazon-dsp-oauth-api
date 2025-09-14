@@ -30,42 +30,74 @@ async def get_user_settings(
 ):
     """
     Get current user's settings and preferences
-    
+
     Returns:
         User settings including preferences, defaults, and configuration
     """
     try:
+        logger.info("Starting get_user_settings", current_user_keys=list(current_user.keys()) if current_user else None)
+
         user_context = get_user_context(current_user)
-        clerk_user_id = user_context["clerk_user_id"]
+        logger.info("User context retrieved", user_context_keys=list(user_context.keys()) if user_context else None)
+
+        clerk_user_id = user_context.get("clerk_user_id")
+        if not clerk_user_id:
+            logger.error("No clerk_user_id in user_context", user_context=user_context)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid user context: missing clerk_user_id"
+            )
 
         # Get user from database
+        logger.info("Querying user from database", clerk_user_id=clerk_user_id)
         user = await user_service.get_user_by_clerk_id(clerk_user_id)
+
         if not user:
             # Try to create user if they don't exist
             logger.warning(f"User not found in database, attempting to create: {clerk_user_id}")
-            from app.schemas.user import UserCreate
-            user_create = UserCreate(
-                clerk_user_id=clerk_user_id,
-                email=user_context.get("email", f"{clerk_user_id}@clerk.user"),
-                first_name=user_context.get("first_name", ""),
-                last_name=user_context.get("last_name", ""),
-                profile_image_url=user_context.get("profile_image")
-            )
-            user = await user_service.create_user(user_create)
+            try:
+                from app.schemas.user import UserCreate
+                user_create = UserCreate(
+                    clerk_user_id=clerk_user_id,
+                    email=user_context.get("email", f"{clerk_user_id}@clerk.user"),
+                    first_name=user_context.get("first_name", ""),
+                    last_name=user_context.get("last_name", ""),
+                    profile_image_url=user_context.get("profile_image")
+                )
+                logger.info("Creating new user", user_create_data=user_create.dict())
+                user = await user_service.create_user(user_create)
+
+                if user:
+                    logger.info("User created successfully", user_id=user.id)
+                else:
+                    logger.error("User creation returned None")
+
+            except Exception as create_error:
+                logger.error("Error creating user", error=str(create_error), exc_info=True)
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"Failed to create user: {str(create_error)}"
+                )
 
             if not user:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="Failed to create user in database"
                 )
-        
+        else:
+            logger.info("User found in database", user_id=user.id)
+
         # Get settings from database or return defaults
+        logger.info("Getting settings from database", user_id=user.id)
         supabase = get_supabase_client()
-        
+
         # Query user_settings table
         try:
+            logger.info("Querying user_settings table", user_id=user.id)
             response = supabase.table("user_settings").select("*").eq("user_id", user.id).single().execute()
+            logger.info("Settings query completed", has_data=bool(response.data))
         except Exception as e:
+            logger.info("No settings found, creating default response", error=str(e))
             # Handle case where no settings exist yet
             response = type('obj', (object,), {'data': None})()
         
