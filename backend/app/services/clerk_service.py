@@ -42,25 +42,34 @@ class ClerkService:
             Decoded token payload if valid, None otherwise
         """
         try:
+            logger.debug("Starting token verification")
+
             # Get JWKS from Clerk
             jwks = await self.get_jwks()
             if not jwks:
                 logger.error("Failed to fetch JWKS")
                 return None
 
+            logger.debug(f"JWKS fetched, contains {len(jwks.get('keys', []))} keys")
+
             # Decode without verification first to get the kid
             unverified = jwt.decode(token, options={"verify_signature": False})
             kid = jwt.get_unverified_header(token).get("kid")
+
+            logger.debug(f"Token kid: {kid}")
+            logger.debug(f"Token claims: sub={unverified.get('sub')}, exp={unverified.get('exp')}")
 
             # Find the matching key
             public_key = None
             for key in jwks.get("keys", []):
                 if key.get("kid") == kid:
                     public_key = RSAAlgorithm.from_jwk(json.dumps(key))
+                    logger.debug(f"Found matching key for kid: {kid}")
                     break
 
             if not public_key:
                 logger.error(f"No matching key found for kid: {kid}")
+                logger.debug(f"Available kids: {[k.get('kid') for k in jwks.get('keys', [])]}")
                 return None
 
             # Verify the token with the public key
@@ -71,11 +80,14 @@ class ClerkService:
                 options={"verify_signature": True}
             )
 
+            logger.debug("Token signature verified successfully")
+
             # Check expiration
             if decoded.get("exp", 0) < datetime.utcnow().timestamp():
-                logger.warning("Token expired")
+                logger.warning(f"Token expired: exp={decoded.get('exp')}, now={datetime.utcnow().timestamp()}")
                 return None
 
+            logger.debug(f"Token verified successfully for user: {decoded.get('sub')}")
             return decoded
 
         except jwt.ExpiredSignatureError:
@@ -85,7 +97,7 @@ class ClerkService:
             logger.error(f"Invalid session token: {str(e)}")
             return None
         except Exception as e:
-            logger.error(f"Error verifying session token: {str(e)}")
+            logger.error(f"Error verifying session token: {str(e)}", exc_info=True)
             return None
     
     async def get_jwks(self) -> Optional[Dict[str, Any]]:
@@ -98,6 +110,7 @@ class ClerkService:
         # Cache JWKS for 1 hour
         if self._jwks_cache and self._jwks_cache_time:
             if datetime.utcnow() - self._jwks_cache_time < timedelta(hours=1):
+                logger.debug("Using cached JWKS")
                 return self._jwks_cache
 
         try:
@@ -105,32 +118,40 @@ class ClerkService:
             # Format: pk_test_XXX or pk_live_XXX
             if not self.publishable_key:
                 logger.error("Clerk publishable key not configured")
+                logger.error(f"CLERK_PUBLISHABLE_KEY value: {self.publishable_key}")
                 return None
+
+            logger.debug(f"Publishable key prefix: {self.publishable_key[:20]}...")
 
             # Get the instance domain from the publishable key
             # The format is pk_[env]_[instance_id]
             parts = self.publishable_key.split('_')
             if len(parts) < 3:
-                logger.error("Invalid Clerk publishable key format")
+                logger.error(f"Invalid Clerk publishable key format. Parts: {parts}")
                 return None
 
             instance_id = parts[2].split('.')[0]  # Remove any domain suffix
             env = parts[1]  # 'test' or 'live'
 
+            logger.debug(f"Clerk instance: {instance_id}, env: {env}")
+
             # Construct JWKS URL
             jwks_url = f"https://{instance_id}.clerk.accounts.dev/.well-known/jwks.json"
+            logger.debug(f"JWKS URL: {jwks_url}")
 
             async with httpx.AsyncClient() as client:
                 response = await client.get(jwks_url)
                 if response.status_code == 200:
                     self._jwks_cache = response.json()
                     self._jwks_cache_time = datetime.utcnow()
+                    logger.debug(f"JWKS fetched successfully, {len(self._jwks_cache.get('keys', []))} keys")
                     return self._jwks_cache
                 else:
                     logger.error(f"Failed to fetch JWKS: {response.status_code}")
+                    logger.error(f"Response: {response.text}")
                     return None
         except Exception as e:
-            logger.error(f"Error fetching JWKS: {str(e)}")
+            logger.error(f"Error fetching JWKS: {str(e)}", exc_info=True)
             return None
     
     async def get_user(self, clerk_user_id: str) -> Optional[UserCreate]:

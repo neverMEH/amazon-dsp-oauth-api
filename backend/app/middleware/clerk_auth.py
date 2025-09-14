@@ -22,10 +22,10 @@ class ClerkAuthMiddleware:
     async def authenticate_request(self, request: Request) -> Optional[Dict[str, Any]]:
         """
         Authenticate request using Clerk session token
-        
+
         Args:
             request: FastAPI request object
-            
+
         Returns:
             User data if authenticated, None otherwise
         """
@@ -33,28 +33,38 @@ class ClerkAuthMiddleware:
             # Try to get token from Authorization header
             auth_header = request.headers.get("Authorization")
             token = None
-            
+
+            logger.debug(f"Auth header present: {bool(auth_header)}")
+
             if auth_header:
                 token = self.extract_token_from_header(auth_header)
-            
+                logger.debug(f"Token extracted from header: {bool(token)}")
+
             # If no token in header, try session cookie
             if not token:
                 token = request.cookies.get("__session")
-            
+                logger.debug(f"Token from cookie: {bool(token)}")
+
             if not token:
+                logger.debug("No token found in request")
                 return None
-            
+
+            # Log token prefix for debugging (first 20 chars)
+            logger.debug(f"Token prefix: {token[:20]}..." if len(token) > 20 else f"Token: {token}")
+
             # Verify token with Clerk
             user_data = await self.clerk_service.verify_session_token(token)
-            
+
             if user_data:
                 logger.info(f"User authenticated: {user_data.get('sub')}")
                 return user_data
-            
+            else:
+                logger.warning("Token verification failed")
+
             return None
-            
+
         except Exception as e:
-            logger.error(f"Authentication error: {str(e)}")
+            logger.error(f"Authentication error: {str(e)}", exc_info=True)
             return None
     
     def extract_token_from_header(self, auth_header: str) -> Optional[str]:
