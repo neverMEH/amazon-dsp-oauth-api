@@ -110,27 +110,75 @@ class AccountService {
 
   // Get user settings
   async getSettings(): Promise<SettingsResponse> {
-    const response = await this.fetchWithAuth('/api/v1/settings');
+    try {
+      const response = await this.fetchWithAuth('/api/v1/settings');
 
-    // Log the response for debugging
-    console.log('Settings API response:', response);
-    console.log('Type of preferences:', typeof response.preferences);
+      // Log the response for debugging
+      console.log('Settings API response:', response);
+      console.log('Type of preferences:', typeof response.preferences);
+      console.log('Preferences content:', response.preferences);
 
-    // If preferences is a string, parse it
-    let preferences = response.preferences;
-    if (typeof preferences === 'string') {
-      try {
-        preferences = JSON.parse(preferences);
-        console.log('Parsed preferences from string:', preferences);
-      } catch (e) {
-        console.error('Failed to parse preferences string:', e);
-        preferences = {};
+      // If preferences is a string, parse it
+      let preferences = response.preferences;
+      if (typeof preferences === 'string') {
+        try {
+          preferences = JSON.parse(preferences);
+          console.log('Parsed preferences from string:', preferences);
+        } catch (e) {
+          console.error('Failed to parse preferences string:', e);
+          preferences = {};
+        }
       }
-    }
 
-    // Handle case where response might not have preferences
-    if (!response || !preferences) {
-      console.warn('Invalid settings response, using defaults', response);
+      // Handle case where response might not have preferences
+      if (!response || !preferences) {
+        console.warn('Invalid settings response, using defaults', response);
+        return {
+          settings: {
+            autoRefreshTokens: true,
+            defaultAccountId: null,
+            notificationPreferences: {
+              emailOnTokenExpiry: true,
+              emailOnTokenRefresh: true,
+              emailOnConnectionIssue: true,
+            },
+            dashboardLayout: 'grid',
+          }
+        };
+      }
+
+      // Transform backend response to match frontend expectations
+      // Backend returns 'preferences' but frontend expects 'settings'
+      const transformedSettings = {
+        settings: {
+          autoRefreshTokens: preferences.auto_refresh_tokens !== undefined
+            ? preferences.auto_refresh_tokens
+            : true,
+          defaultAccountId: preferences.default_account_id !== undefined
+            ? preferences.default_account_id
+            : null,
+          notificationPreferences: {
+            emailOnTokenExpiry: preferences.email_notifications !== undefined
+              ? preferences.email_notifications
+              : true,
+            emailOnTokenRefresh: preferences.email_notifications !== undefined
+              ? preferences.email_notifications
+              : true,
+            emailOnConnectionIssue: preferences.email_notifications !== undefined
+              ? preferences.email_notifications
+              : true,
+          },
+          dashboardLayout: (preferences.dashboard_layout || 'grid') as 'grid' | 'list',
+        }
+      };
+
+      console.log('Transformed settings:', transformedSettings);
+      console.log('Settings object:', transformedSettings.settings);
+
+      return transformedSettings;
+    } catch (error) {
+      console.error('Error in getSettings:', error);
+      // Return default settings on any error
       return {
         settings: {
           autoRefreshTokens: true,
@@ -144,21 +192,6 @@ class AccountService {
         }
       };
     }
-
-    // Transform backend response to match frontend expectations
-    // Backend returns 'preferences' but frontend expects 'settings'
-    return {
-      settings: {
-        autoRefreshTokens: preferences.auto_refresh_tokens ?? true,
-        defaultAccountId: preferences.default_account_id ?? null,
-        notificationPreferences: {
-          emailOnTokenExpiry: preferences.email_notifications ?? true,
-          emailOnTokenRefresh: preferences.email_notifications ?? true,
-          emailOnConnectionIssue: preferences.email_notifications ?? true,
-        },
-        dashboardLayout: (preferences.dashboard_layout ?? 'grid') as 'grid' | 'list',
-      }
-    };
   }
 
   // Update user settings
