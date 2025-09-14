@@ -9,7 +9,9 @@ import {
   UpdateSettingsRequest,
 } from '@/types/account';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+// Use relative URL in production (same domain), localhost for development
+const API_BASE_URL = import.meta.env.VITE_API_URL || 
+  (window.location.hostname === 'localhost' ? 'http://localhost:8000' : '');
 
 // Helper to get Clerk session token
 async function getClerkToken() {
