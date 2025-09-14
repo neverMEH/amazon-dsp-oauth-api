@@ -7,6 +7,8 @@ from typing import Optional, Dict, Any, Callable
 import structlog
 
 from app.services.clerk_service import ClerkService
+from app.services.user_service import UserService
+from app.schemas.user import UserCreate
 
 logger = structlog.get_logger()
 security = HTTPBearer(auto_error=False)
@@ -18,6 +20,7 @@ class ClerkAuthMiddleware:
     def __init__(self):
         """Initialize middleware"""
         self.clerk_service = ClerkService()
+        self.user_service = UserService()
     
     async def authenticate_request(self, request: Request) -> Optional[Dict[str, Any]]:
         """
@@ -53,11 +56,25 @@ class ClerkAuthMiddleware:
             logger.debug(f"Token prefix: {token[:20]}..." if len(token) > 20 else f"Token: {token}")
 
             # Verify token with Clerk
-            user_data = await self.clerk_service.verify_session_token(token)
+            clerk_data = await self.clerk_service.verify_session_token(token)
 
-            if user_data:
-                logger.info(f"User authenticated: {user_data.get('sub')}")
-                return user_data
+            if clerk_data:
+                logger.info(f"User authenticated: {clerk_data.get('sub')}")
+
+                # Ensure user exists in our database
+                user_data = await self.ensure_user_exists(clerk_data)
+
+                # Combine Clerk data with user data
+                if user_data:
+                    return {
+                        **clerk_data,
+                        "user_id": user_data.get("id"),  # Add database user ID
+                        "email": user_data.get("email"),
+                        "db_user": user_data  # Include full database user data
+                    }
+                else:
+                    # If we couldn't create/find user, still return Clerk data
+                    return clerk_data
             else:
                 logger.warning("Token verification failed")
 
@@ -67,6 +84,50 @@ class ClerkAuthMiddleware:
             logger.error(f"Authentication error: {str(e)}", exc_info=True)
             return None
     
+    async def ensure_user_exists(self, clerk_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """
+        Ensure user exists in database, create if not
+
+        Args:
+            clerk_data: Verified Clerk token data
+
+        Returns:
+            User data from database or None
+        """
+        try:
+            clerk_user_id = clerk_data.get("sub")
+            if not clerk_user_id:
+                logger.error("No sub (user ID) in Clerk data")
+                return None
+
+            # Try to get existing user
+            user = await self.user_service.get_user_by_clerk_id(clerk_user_id)
+
+            if user:
+                # Update last login
+                await self.user_service.update_last_login(clerk_user_id)
+                return user.to_dict()
+
+            # User doesn't exist, create them
+            logger.info(f"Creating new user for Clerk ID: {clerk_user_id}")
+
+            # Get user details from Clerk if needed
+            # For now, use data from the token
+            user_create = UserCreate(
+                clerk_user_id=clerk_user_id,
+                email=clerk_data.get("email") or f"{clerk_user_id}@clerk.user",
+                first_name=clerk_data.get("first_name") or "",
+                last_name=clerk_data.get("last_name") or "",
+                profile_image_url=clerk_data.get("image_url")
+            )
+
+            new_user = await self.user_service.create_user(user_create)
+            return new_user.to_dict() if new_user else None
+
+        except Exception as e:
+            logger.error(f"Error ensuring user exists: {str(e)}", exc_info=True)
+            return None
+
     def extract_token_from_header(self, auth_header: str) -> Optional[str]:
         """
         Extract token from Authorization header
