@@ -60,7 +60,7 @@ class Settings(BaseSettings):
     retry_backoff_base: int = 2
     
     # API Version
-    api_version: str = "1.0.0"
+    api_version: str = "1.0.1"
     
     class Config:
         env_file = BASE_DIR / ".env"
