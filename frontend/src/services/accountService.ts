@@ -19,13 +19,15 @@ const API_BASE_URL = import.meta.env.VITE_API_URL ||
 async function getClerkToken() {
   // @ts-ignore - Clerk is available globally
   const clerk = window.Clerk;
-  if (!clerk) {
-    console.warn('Clerk not initialized');
+  if (!clerk || !clerk.session) {
+    console.warn('Clerk not initialized or no active session');
     return null;
   }
-  
+
   try {
-    const token = await clerk.session?.getToken();
+    // Get the session token - this is what the backend expects
+    const token = await clerk.session.getToken();
+    console.log('Got Clerk token:', token ? 'Token present' : 'No token');
     return token;
   } catch (error) {
     console.error('Failed to get Clerk token:', error);

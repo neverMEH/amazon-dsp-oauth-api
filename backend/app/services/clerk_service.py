@@ -10,6 +10,7 @@ from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta
 import structlog
 from svix.webhooks import Webhook, WebhookVerificationError
+from jwt.algorithms import RSAAlgorithm
 
 from app.config import settings
 from app.schemas.user import UserCreate, UserUpdate
@@ -27,29 +28,56 @@ class ClerkService:
         self.secret_key = settings.clerk_secret_key
         self.publishable_key = settings.clerk_publishable_key
         self.user_service = UserService()
+        self._jwks_cache = None
+        self._jwks_cache_time = None
     
     async def verify_session_token(self, token: str) -> Optional[Dict[str, Any]]:
         """
         Verify a Clerk session token
-        
+
         Args:
             token: JWT session token from Clerk
-            
+
         Returns:
             Decoded token payload if valid, None otherwise
         """
         try:
-            # Verify JWT with Clerk's public key
-            # In production, fetch public keys from Clerk's JWKS endpoint
-            decoded = self.verify_jwt(token)
-            
+            # Get JWKS from Clerk
+            jwks = await self.get_jwks()
+            if not jwks:
+                logger.error("Failed to fetch JWKS")
+                return None
+
+            # Decode without verification first to get the kid
+            unverified = jwt.decode(token, options={"verify_signature": False})
+            kid = jwt.get_unverified_header(token).get("kid")
+
+            # Find the matching key
+            public_key = None
+            for key in jwks.get("keys", []):
+                if key.get("kid") == kid:
+                    public_key = RSAAlgorithm.from_jwk(json.dumps(key))
+                    break
+
+            if not public_key:
+                logger.error(f"No matching key found for kid: {kid}")
+                return None
+
+            # Verify the token with the public key
+            decoded = jwt.decode(
+                token,
+                public_key,
+                algorithms=["RS256"],
+                options={"verify_signature": True}
+            )
+
             # Check expiration
             if decoded.get("exp", 0) < datetime.utcnow().timestamp():
                 logger.warning("Token expired")
                 return None
-            
+
             return decoded
-            
+
         except jwt.ExpiredSignatureError:
             logger.warning("Session token expired")
             return None
@@ -60,32 +88,50 @@ class ClerkService:
             logger.error(f"Error verifying session token: {str(e)}")
             return None
     
-    def verify_jwt(self, token: str) -> Dict[str, Any]:
+    async def get_jwks(self) -> Optional[Dict[str, Any]]:
         """
-        Verify JWT token with Clerk's public key
-        
-        Args:
-            token: JWT token to verify
-            
+        Fetch JWKS from Clerk's endpoint
+
         Returns:
-            Decoded token payload
+            JWKS data or None
         """
-        # This is a simplified version - in production, fetch keys from JWKS
-        # For now, we'll use the secret key for symmetric verification
-        # Clerk actually uses RS256 with public keys
-        
-        if not self.secret_key:
-            raise ValueError("Clerk secret key not configured")
-        
-        # Extract the key part (remove 'sk_test_' or 'sk_live_' prefix)
-        key = self.secret_key.split('_')[-1] if '_' in self.secret_key else self.secret_key
-        
-        return jwt.decode(
-            token,
-            key,
-            algorithms=["HS256", "RS256"],
-            options={"verify_signature": True}
-        )
+        # Cache JWKS for 1 hour
+        if self._jwks_cache and self._jwks_cache_time:
+            if datetime.utcnow() - self._jwks_cache_time < timedelta(hours=1):
+                return self._jwks_cache
+
+        try:
+            # Extract instance ID from publishable key
+            # Format: pk_test_XXX or pk_live_XXX
+            if not self.publishable_key:
+                logger.error("Clerk publishable key not configured")
+                return None
+
+            # Get the instance domain from the publishable key
+            # The format is pk_[env]_[instance_id]
+            parts = self.publishable_key.split('_')
+            if len(parts) < 3:
+                logger.error("Invalid Clerk publishable key format")
+                return None
+
+            instance_id = parts[2].split('.')[0]  # Remove any domain suffix
+            env = parts[1]  # 'test' or 'live'
+
+            # Construct JWKS URL
+            jwks_url = f"https://{instance_id}.clerk.accounts.dev/.well-known/jwks.json"
+
+            async with httpx.AsyncClient() as client:
+                response = await client.get(jwks_url)
+                if response.status_code == 200:
+                    self._jwks_cache = response.json()
+                    self._jwks_cache_time = datetime.utcnow()
+                    return self._jwks_cache
+                else:
+                    logger.error(f"Failed to fetch JWKS: {response.status_code}")
+                    return None
+        except Exception as e:
+            logger.error(f"Error fetching JWKS: {str(e)}")
+            return None
     
     async def get_user(self, clerk_user_id: str) -> Optional[UserCreate]:
         """
