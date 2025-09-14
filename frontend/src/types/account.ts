@@ -77,6 +77,9 @@ export interface AccountsListResponse {
   total: number;
 }
 
+// Alias for backward compatibility
+export type AccountsResponse = AccountsListResponse;
+
 export interface AccountDetailsResponse {
   account: Account;
   refreshHistory: RefreshHistory[];
@@ -95,6 +98,10 @@ export interface ReauthorizeResponse {
   success: boolean;
   authorizationUrl?: string;
   message: string;
+}
+
+export interface RefreshHistoryResponse {
+  history: RefreshHistory[];
 }
 
 export interface SettingsResponse {

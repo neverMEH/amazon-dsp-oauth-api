@@ -112,9 +112,9 @@ export const ReauthorizationFlow: React.FC<ReauthorizationFlowProps> = ({
 
     try {
       // Check if the account has been reauthorized
-      const response = await accountService.getAccountDetails(account.id);
-      
-      if (response.account.status === 'healthy') {
+      const updatedAccount = await accountService.getAccountDetails(account.id);
+
+      if (updatedAccount.status === 'healthy') {
         setProgress(100);
         setCurrentStep('success');
         
@@ -155,7 +155,7 @@ export const ReauthorizationFlow: React.FC<ReauthorizationFlowProps> = ({
         return {
           icon: AlertTriangle,
           title: 'Token Expiring Soon',
-          description: `Your token will expire in ${accountService.getTimeUntilExpiry(account.tokenExpiresAt)}. Reauthorize now to avoid service interruption.`,
+          description: `Your token will expire in ${account.tokenExpiresAt ? accountService.getTimeUntilExpiry(account.tokenExpiresAt) : 'unknown time'}. Reauthorize now to avoid service interruption.`,
           color: 'text-yellow-600 dark:text-yellow-400'
         };
       case 'disconnected':

@@ -1,5 +1,6 @@
 import {
   Account,
+  AccountStatus,
   AccountsResponse,
   DisconnectAccountResponse,
   ReauthorizeResponse,
@@ -60,6 +61,27 @@ class AccountService {
   // Get all accounts
   async getAccounts(): Promise<AccountsResponse> {
     return this.fetchWithAuth('/api/v1/accounts');
+  }
+
+  // Get account details
+  async getAccountDetails(accountId: string): Promise<Account> {
+    return this.fetchWithAuth(`/api/v1/accounts/${accountId}`);
+  }
+
+  // Get account status (helper method)
+  getAccountStatus(account: Account): AccountStatus {
+    if (!account.tokenExpiresAt) return 'disconnected';
+
+    const now = new Date();
+    const expiresAt = new Date(account.tokenExpiresAt);
+
+    if (expiresAt < now) return 'expired';
+
+    const hoursUntilExpiry = (expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+    if (hoursUntilExpiry < 24) return 'warning';
+
+    return 'healthy';
   }
 
   // Get account health status

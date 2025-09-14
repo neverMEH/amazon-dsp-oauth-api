@@ -68,8 +68,9 @@ export const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
     
     setIsLoading(true);
     try {
-      const response: AccountDetailsResponse = await accountService.getAccountDetails(account.id);
-      setRefreshHistory(response.refreshHistory || []);
+      const accountDetails = await accountService.getAccountDetails(account.id);
+      // For now, we don't have refresh history endpoint, so just set empty array
+      setRefreshHistory([]);
     } catch (error) {
       console.error('Failed to load account details:', error);
       toast({

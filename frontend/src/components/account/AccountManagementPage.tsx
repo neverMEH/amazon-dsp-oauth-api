@@ -93,9 +93,9 @@ export const AccountManagementPage: React.FC<AccountManagementPageProps> = ({
       ]);
 
       // Update account status based on token expiry
-      const updatedAccounts = accountsResponse.accounts.map(account => ({
+      const updatedAccounts = accountsResponse.accounts.map((account: Account) => ({
         ...account,
-        status: accountService.getAccountStatus(account.tokenExpiresAt),
+        status: accountService.getAccountStatus(account),
       }));
 
       setAccounts(updatedAccounts);

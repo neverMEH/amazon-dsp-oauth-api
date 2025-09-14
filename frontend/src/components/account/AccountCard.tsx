@@ -81,7 +81,9 @@ export const AccountCard: React.FC<AccountCardProps> = ({
     }
   };
 
-  const timeUntilExpiry = accountService.getTimeUntilExpiry(account.tokenExpiresAt);
+  const timeUntilExpiry = account.tokenExpiresAt
+    ? accountService.getTimeUntilExpiry(account.tokenExpiresAt)
+    : 'N/A';
   const isRefreshingState = isRefreshing || isLocalRefreshing;
 
   return (
