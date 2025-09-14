@@ -37,20 +37,37 @@ async def get_user_settings(
     try:
         user_context = get_user_context(current_user)
         clerk_user_id = user_context["clerk_user_id"]
-        
+
         # Get user from database
         user = await user_service.get_user_by_clerk_id(clerk_user_id)
         if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
+            # Try to create user if they don't exist
+            logger.warning(f"User not found in database, attempting to create: {clerk_user_id}")
+            from app.schemas.user import UserCreate
+            user_create = UserCreate(
+                clerk_user_id=clerk_user_id,
+                email=user_context.get("email", f"{clerk_user_id}@clerk.user"),
+                first_name=user_context.get("first_name", ""),
+                last_name=user_context.get("last_name", ""),
+                profile_image_url=user_context.get("profile_image")
             )
+            user = await user_service.create_user(user_create)
+
+            if not user:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Failed to create user in database"
+                )
         
         # Get settings from database or return defaults
         supabase = get_supabase_client()
         
         # Query user_settings table
-        response = supabase.table("user_settings").select("*").eq("user_id", user.id).single().execute()
+        try:
+            response = supabase.table("user_settings").select("*").eq("user_id", user.id).single().execute()
+        except Exception as e:
+            # Handle case where no settings exist yet
+            response = type('obj', (object,), {'data': None})()
         
         if response.data:
             settings_data = response.data
@@ -104,19 +121,36 @@ async def update_user_settings(
     try:
         user_context = get_user_context(current_user)
         clerk_user_id = user_context["clerk_user_id"]
-        
+
         # Get user from database
         user = await user_service.get_user_by_clerk_id(clerk_user_id)
         if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
+            # Try to create user if they don't exist
+            logger.warning(f"User not found in database, attempting to create: {clerk_user_id}")
+            from app.schemas.user import UserCreate
+            user_create = UserCreate(
+                clerk_user_id=clerk_user_id,
+                email=user_context.get("email", f"{clerk_user_id}@clerk.user"),
+                first_name=user_context.get("first_name", ""),
+                last_name=user_context.get("last_name", ""),
+                profile_image_url=user_context.get("profile_image")
             )
+            user = await user_service.create_user(user_create)
+
+            if not user:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Failed to create user in database"
+                )
         
         supabase = get_supabase_client()
         
         # Get existing settings
-        response = supabase.table("user_settings").select("*").eq("user_id", user.id).single().execute()
+        try:
+            response = supabase.table("user_settings").select("*").eq("user_id", user.id).single().execute()
+        except Exception as e:
+            # Handle case where no settings exist yet
+            response = type('obj', (object,), {'data': None})()
         
         if response.data:
             existing_preferences = json.loads(response.data.get("preferences", "{}"))
@@ -182,14 +216,27 @@ async def reset_user_settings(
     try:
         user_context = get_user_context(current_user)
         clerk_user_id = user_context["clerk_user_id"]
-        
+
         # Get user from database
         user = await user_service.get_user_by_clerk_id(clerk_user_id)
         if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
+            # Try to create user if they don't exist
+            logger.warning(f"User not found in database, attempting to create: {clerk_user_id}")
+            from app.schemas.user import UserCreate
+            user_create = UserCreate(
+                clerk_user_id=clerk_user_id,
+                email=user_context.get("email", f"{clerk_user_id}@clerk.user"),
+                first_name=user_context.get("first_name", ""),
+                last_name=user_context.get("last_name", ""),
+                profile_image_url=user_context.get("profile_image")
             )
+            user = await user_service.create_user(user_create)
+
+            if not user:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Failed to create user in database"
+                )
         
         # Get default preferences
         default_prefs = get_default_preferences()
@@ -203,7 +250,11 @@ async def reset_user_settings(
         }
         
         # Check if settings exist
-        response = supabase.table("user_settings").select("*").eq("user_id", user.id).single().execute()
+        try:
+            response = supabase.table("user_settings").select("*").eq("user_id", user.id).single().execute()
+        except Exception as e:
+            # Handle case where no settings exist yet
+            response = type('obj', (object,), {'data': None})()
         
         if response.data:
             # Update existing

@@ -194,28 +194,31 @@ class AmazonAccountService:
             - Amazon-Advertising-API-ClientId: {client_id}
             - Content-Type: application/json
         
-        **Expected Response:**
+        **Expected Response (API v3.0):**
         ```json
         {
-            "accounts": [
+            "adsAccounts": [
                 {
-                    "accountId": "string",
+                    "adsAccountId": "string",
                     "accountName": "string",
-                    "accountType": "ADVERTISER|AGENCY",
-                    "accountStatus": "ACTIVE|SUSPENDED|TERMINATED",
-                    "marketplaceId": "string",
-                    "marketplaceName": "string",
-                    "countryCode": "string",
-                    "currencyCode": "string",
-                    "timezone": "string",
-                    "createdDate": "2025-01-01T00:00:00Z",
-                    "lastUpdatedDate": "2025-01-01T00:00:00Z",
-                    "linkedProfiles": [
+                    "status": "CREATED|DISABLED|PARTIALLY_CREATED|PENDING",
+                    "alternateIds": [
                         {
-                            "profileId": "string",
-                            "profileName": "string"
+                            "countryCode": "string",
+                            "entityId": "string",
+                            "profileId": number
                         }
-                    ]
+                    ],
+                    "countryCodes": ["US", "CA", "MX"],
+                    "errors": {
+                        "US": [
+                            {
+                                "errorId": number,
+                                "errorCode": "string",
+                                "errorMessage": "string"
+                            }
+                        ]
+                    }
                 }
             ],
             "nextToken": "string"
@@ -237,7 +240,7 @@ class AmazonAccountService:
             "Authorization": f"Bearer {access_token}",
             "Amazon-Advertising-API-ClientId": settings.amazon_client_id,
             "Content-Type": "application/vnd.listaccountsresource.v1+json",
-            "Accept": "application/json"
+            "Accept": "application/vnd.listaccountsresource.v1+json"  # Accept the correct response type
         }
         
         # Account Management API endpoint - POST /adsAccounts/list
@@ -285,7 +288,8 @@ class AmazonAccountService:
 
                 data = response.json()
 
-                accounts = data.get("accounts", [])
+                # API v3.0 returns "adsAccounts" not "accounts"
+                accounts = data.get("adsAccounts", [])
                 next_token_response = data.get("nextToken")
 
                 logger.info(
@@ -295,7 +299,7 @@ class AmazonAccountService:
                 )
 
                 return {
-                    "accounts": accounts,
+                    "adsAccounts": accounts,  # Return correct field name
                     "nextToken": next_token_response
                 }
             

@@ -81,8 +81,14 @@ class ClerkAuthMiddleware:
                         "db_user": user_data  # Include full database user data
                     }
                 else:
-                    # If we couldn't create/find user, still return Clerk data
-                    return clerk_data
+                    # If we couldn't create/find user, log error but still return Clerk data
+                    logger.error(f"Failed to sync user to database: {clerk_data.get('sub')}")
+                    # Return Clerk data without database user ID
+                    return {
+                        **clerk_data,
+                        "user_id": None,  # No database user ID available
+                        "db_user": None
+                    }
             else:
                 logger.warning("Token verification failed")
 
@@ -316,15 +322,24 @@ async def verify_clerk_webhook(request: Request) -> bool:
 def get_user_context(user_data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Extract useful context from user data for application use
-    
+
     Args:
         user_data: Raw user data from Clerk
-        
+
     Returns:
         User context for application
     """
+    # Get the database user ID if available
+    db_user_id = None
+    if "user_id" in user_data:
+        # Database user ID is already in user_data (from authenticate_request)
+        db_user_id = user_data.get("user_id")
+    elif "db_user" in user_data and user_data["db_user"]:
+        # Extract from db_user object
+        db_user_id = user_data["db_user"].get("id")
+
     return {
-        "user_id": user_data.get("sub"),
+        "user_id": db_user_id,  # This should be the database UUID
         "clerk_user_id": user_data.get("sub"),
         "email": user_data.get("email"),
         "email_verified": user_data.get("email_verified", False),
@@ -334,5 +349,6 @@ def get_user_context(user_data: Dict[str, Any]) -> Dict[str, Any]:
         "profile_image": user_data.get("picture"),
         "is_authenticated": True,
         "auth_time": user_data.get("auth_time"),
-        "session_id": user_data.get("sid")
+        "session_id": user_data.get("sid"),
+        "db_user": user_data.get("db_user")  # Include full database user data
     }

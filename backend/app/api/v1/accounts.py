@@ -178,13 +178,14 @@ async def list_amazon_ads_accounts(
     supabase = Depends(get_supabase_client)
 ):
     """
-    List Amazon Advertising accounts using the Account Management API
+    List Amazon Advertising accounts using the Account Management API v3.0
 
     **Endpoint Details:**
     - URL: POST https://advertising-api.amazon.com/adsAccounts/list
     - Method: POST
-    - Version: v1
+    - Version: v3.0
     - Content-Type: application/vnd.listaccountsresource.v1+json
+    - Accept: application/vnd.listaccountsresource.v1+json
     - Required Headers: Authorization, Amazon-Advertising-API-ClientId
 
     **Amazon API Documentation:**
@@ -194,14 +195,19 @@ async def list_amazon_ads_accounts(
     - User must have valid Amazon OAuth tokens
     - Scopes: advertising::account_management
 
-    **Response Structure:**
-    Returns accounts with full details from Amazon's Account Management API,
-    including account type (ADVERTISER/AGENCY), status, marketplace info, and linked profiles.
-    
+    **Response Structure (API v3.0):**
+    Returns adsAccounts array with:
+    - adsAccountId: Global advertising account ID
+    - accountName: Account display name
+    - status: CREATED, DISABLED, PARTIALLY_CREATED, or PENDING
+    - alternateIds: Array of {countryCode, entityId, profileId}
+    - countryCodes: Array of supported country codes
+    - errors: Object mapping country codes to error arrays
+
     **Rate Limits:**
     - Default: 2 requests per second
     - Burst: 10 requests
-    
+
     **Common Issues:**
     - 401: Token expired - needs refresh
     - 403: Insufficient permissions - missing account_management scope
@@ -231,51 +237,75 @@ async def list_amazon_ads_accounts(
         token_data = await refresh_token_if_needed(user_id, token_data, supabase)
         
         # Call Amazon Account Management API
-        accounts = await account_service.list_ads_accounts(token_data["access_token"])
-        
+        response = await account_service.list_ads_accounts(token_data["access_token"])
+        accounts = response.get("adsAccounts", [])
+
         # Store/update accounts in our database
         for account in accounts:
-            # Check if account exists
+            # Check if account exists (using adsAccountId from API v3)
             existing = supabase.table("user_accounts").select("*").eq(
                 "user_id", user_id
             ).eq(
-                "amazon_account_id", account.get("accountId")
+                "amazon_account_id", account.get("adsAccountId")  # Changed from accountId
             ).execute()
             
             if not existing.data:
-                # Create new account record
+                # Create new account record with API v3 structure
+                # Extract first alternate ID if available for profile info
+                alternate_ids = account.get("alternateIds", [])
+                first_alternate = alternate_ids[0] if alternate_ids else {}
+
+                # Map status to lowercase (API v3 uses CREATED, DISABLED, etc.)
+                status_map = {
+                    "CREATED": "active",
+                    "PARTIALLY_CREATED": "partial",
+                    "PENDING": "pending",
+                    "DISABLED": "disabled"
+                }
+                api_status = account.get("status", "CREATED")
+
                 new_account = AmazonAccount(
                     user_id=user_id,
                     account_name=account.get("accountName", "Unknown"),
-                    amazon_account_id=account.get("accountId"),
-                    marketplace_id=account.get("marketplaceId"),
-                    account_type=account.get("accountType", "ADVERTISER").lower(),
-                    status=account.get("accountStatus", "ACTIVE").lower(),
+                    amazon_account_id=account.get("adsAccountId"),  # Changed from accountId
+                    marketplace_id=first_alternate.get("entityId"),  # From alternateIds
+                    account_type="advertiser",  # Default since v3 doesn't specify type
+                    status=status_map.get(api_status, "active"),
                     metadata={
-                        "country_code": account.get("countryCode"),
-                        "currency_code": account.get("currencyCode"),
-                        "timezone": account.get("timezone"),
-                        "marketplace_name": account.get("marketplaceName"),
-                        "created_date": account.get("createdDate"),
-                        "last_updated_date": account.get("lastUpdatedDate"),
-                        "linked_profiles": account.get("linkedProfiles", [])
+                        "alternate_ids": alternate_ids,
+                        "country_codes": account.get("countryCodes", []),
+                        "errors": account.get("errors", {}),
+                        "profile_id": first_alternate.get("profileId"),
+                        "country_code": first_alternate.get("countryCode"),
+                        "api_status": api_status  # Store original status
                     }
                 )
                 supabase.table("user_accounts").insert(new_account.to_dict()).execute()
             else:
-                # Update existing account
+                # Update existing account with API v3 structure
+                alternate_ids = account.get("alternateIds", [])
+                first_alternate = alternate_ids[0] if alternate_ids else {}
+
+                # Map status to lowercase
+                status_map = {
+                    "CREATED": "active",
+                    "PARTIALLY_CREATED": "partial",
+                    "PENDING": "pending",
+                    "DISABLED": "disabled"
+                }
+                api_status = account.get("status", "CREATED")
+
                 supabase.table("user_accounts").update({
                     "last_synced_at": datetime.now(timezone.utc).isoformat(),
-                    "status": account.get("accountStatus", "ACTIVE").lower(),
+                    "status": status_map.get(api_status, "active"),
                     "metadata": {
                         **existing.data[0].get("metadata", {}),
-                        "country_code": account.get("countryCode"),
-                        "currency_code": account.get("currencyCode"),
-                        "timezone": account.get("timezone"),
-                        "marketplace_name": account.get("marketplaceName"),
-                        "created_date": account.get("createdDate"),
-                        "last_updated_date": account.get("lastUpdatedDate"),
-                        "linked_profiles": account.get("linkedProfiles", [])
+                        "alternate_ids": alternate_ids,
+                        "country_codes": account.get("countryCodes", []),
+                        "errors": account.get("errors", {}),
+                        "profile_id": first_alternate.get("profileId"),
+                        "country_code": first_alternate.get("countryCode"),
+                        "api_status": api_status
                     }
                 }).eq("id", existing.data[0]["id"]).execute()
         
