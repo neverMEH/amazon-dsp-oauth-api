@@ -12,7 +12,7 @@ import {
   XCircle,
   CircleOff,
   ExternalLink,
-  CloudDownload
+  Download
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -303,7 +303,7 @@ export const AccountManagementPage: React.FC<AccountManagementPageProps> = ({
             disabled={isRefreshing}
             variant="default"
           >
-            <CloudDownload className={cn("h-4 w-4 mr-2", isRefreshing && "animate-pulse")} />
+            <Download className={cn("h-4 w-4 mr-2", isRefreshing && "animate-pulse")} />
             Sync from Amazon
           </Button>
           
