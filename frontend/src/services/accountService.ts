@@ -11,7 +11,9 @@ import {
 
 // Use relative URL in production (same domain), localhost for development
 const API_BASE_URL = import.meta.env.VITE_API_URL || 
-  (window.location.hostname === 'localhost' ? 'http://localhost:8000' : '');
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+    ? 'http://localhost:8000' 
+    : '');  // Empty string means use relative URLs (same domain)
 
 // Helper to get Clerk session token
 async function getClerkToken() {
