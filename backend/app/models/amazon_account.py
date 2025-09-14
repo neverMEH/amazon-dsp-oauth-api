@@ -1,7 +1,7 @@
 """
 Amazon Account model for managing connected Amazon Advertising accounts
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 from uuid import uuid4
 
@@ -55,7 +55,7 @@ class AmazonAccount:
         self.is_default = is_default
         self.status = status
         self.metadata = metadata or {}
-        self.connected_at = connected_at or datetime.utcnow()
+        self.connected_at = connected_at or datetime.now(timezone.utc)
         self.last_synced_at = last_synced_at
     
     @property

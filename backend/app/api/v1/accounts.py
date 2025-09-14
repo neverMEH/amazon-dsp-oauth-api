@@ -175,6 +175,8 @@ async def refresh_token_if_needed(user_id: str, token_data: Dict, supabase) -> D
 @router.get("/amazon-ads-accounts")
 async def list_amazon_ads_accounts(
     current_user: Dict = Depends(RequireAuth),
+    next_token: Optional[str] = Query(None, description="Pagination token for next page"),
+    max_results: int = Query(100, ge=1, le=100, description="Maximum results per page"),
     supabase = Depends(get_supabase_client)
 ):
     """
@@ -236,8 +238,11 @@ async def list_amazon_ads_accounts(
         # Refresh token if needed
         token_data = await refresh_token_if_needed(user_id, token_data, supabase)
         
-        # Call Amazon Account Management API
-        response = await account_service.list_ads_accounts(token_data["access_token"])
+        # Call Amazon Account Management API with pagination
+        response = await account_service.list_ads_accounts(
+            token_data["access_token"],
+            next_token=next_token
+        )
         accounts = response.get("adsAccounts", [])
 
         # Store/update accounts in our database
@@ -318,6 +323,7 @@ async def list_amazon_ads_accounts(
         return {
             "accounts": accounts,
             "total": len(accounts),
+            "nextToken": response.get("nextToken"),
             "source": "Amazon Account Management API",
             "timestamp": datetime.now(timezone.utc).isoformat()
         }
