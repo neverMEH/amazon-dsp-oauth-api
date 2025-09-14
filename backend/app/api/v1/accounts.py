@@ -449,7 +449,7 @@ async def list_accounts(
     current_user: Dict = Depends(RequireAuth),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
-    status: Optional[str] = Query(None, description="Filter by status"),
+    account_status: Optional[str] = Query(None, description="Filter by status", alias="status"),
     supabase = Depends(get_supabase_client)
 ):
     """
@@ -472,8 +472,8 @@ async def list_accounts(
         # Build query
         query = supabase.table("user_accounts").select("*").eq("user_id", user_id)
         
-        if status:
-            query = query.eq("status", status)
+        if account_status:
+            query = query.eq("status", account_status)
         
         # Get total count
         count_result = query.execute()
