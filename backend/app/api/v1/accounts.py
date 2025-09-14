@@ -113,7 +113,7 @@ class BatchResponse(BaseModel):
 async def get_user_token(user_id: str, supabase) -> Optional[Dict]:
     """Get user's Amazon access token"""
     try:
-        result = supabase.table("tokens").select("*").eq("user_id", user_id).execute()
+        result = supabase.table("oauth_tokens").select("*").eq("user_id", user_id).execute()
         if result.data and len(result.data) > 0:
             token_data = result.data[0]
             # Decrypt the token
@@ -150,11 +150,11 @@ async def refresh_token_if_needed(user_id: str, token_data: Dict, supabase) -> D
                 "encrypted_access_token": token_service.encrypt_token(new_tokens.access_token),
                 "encrypted_refresh_token": token_service.encrypt_token(new_tokens.refresh_token),
                 "expires_at": new_expires.isoformat(),
-                "refresh_count": supabase.table("tokens").select("refresh_count").eq("user_id", user_id).execute().data[0]["refresh_count"] + 1,
+                "refresh_count": supabase.table("oauth_tokens").select("refresh_count").eq("user_id", user_id).execute().data[0]["refresh_count"] + 1,
                 "last_refresh": now.isoformat()
             }
             
-            supabase.table("tokens").update(update_data).eq("user_id", user_id).execute()
+            supabase.table("oauth_tokens").update(update_data).eq("user_id", user_id).execute()
             
             return {
                 "access_token": new_tokens.access_token,
@@ -740,11 +740,11 @@ async def reauthorize_account(
                     "encrypted_access_token": token_service.encrypt_token(new_tokens.access_token),
                     "encrypted_refresh_token": token_service.encrypt_token(new_tokens.refresh_token),
                     "expires_at": new_expires.isoformat(),
-                    "refresh_count": supabase.table("tokens").select("refresh_count").eq("user_id", user_id).execute().data[0]["refresh_count"] + 1,
+                    "refresh_count": supabase.table("oauth_tokens").select("refresh_count").eq("user_id", user_id).execute().data[0]["refresh_count"] + 1,
                     "last_refresh": datetime.now(timezone.utc).isoformat()
                 }
                 
-                supabase.table("tokens").update(update_data).eq("user_id", user_id).execute()
+                supabase.table("oauth_tokens").update(update_data).eq("user_id", user_id).execute()
                 
                 # Update account status
                 supabase.table("user_accounts").update({
