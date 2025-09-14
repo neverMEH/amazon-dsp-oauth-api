@@ -89,15 +89,53 @@ class AccountService {
 
   // Get user settings
   async getSettings(): Promise<SettingsResponse> {
-    return this.fetchWithAuth('/api/v1/settings');
+    const response = await this.fetchWithAuth('/api/v1/settings');
+
+    // Transform backend response to match frontend expectations
+    // Backend returns 'preferences' but frontend expects 'settings'
+    return {
+      settings: {
+        autoRefreshTokens: response.preferences?.auto_refresh_tokens ?? true,
+        defaultAccountId: response.preferences?.default_account_id ?? null,
+        notificationPreferences: {
+          email: response.preferences?.email_notifications ?? true,
+          inApp: response.preferences?.notifications_enabled ?? true,
+        },
+        dashboardLayout: (response.preferences?.dashboard_layout ?? 'grid') as 'grid' | 'list',
+      }
+    };
   }
 
   // Update user settings
   async updateSettings(settings: UpdateSettingsRequest): Promise<SettingsResponse> {
-    return this.fetchWithAuth('/api/v1/settings', {
+    // Transform frontend settings to backend preferences format
+    const requestBody = {
+      preferences: {
+        auto_refresh_tokens: settings.autoRefreshTokens,
+        default_account_id: settings.defaultAccountId,
+        email_notifications: settings.notificationPreferences?.email,
+        notifications_enabled: settings.notificationPreferences?.inApp,
+        dashboard_layout: settings.dashboardLayout,
+      }
+    };
+
+    const response = await this.fetchWithAuth('/api/v1/settings', {
       method: 'PATCH',
-      body: JSON.stringify(settings),
+      body: JSON.stringify(requestBody),
     });
+
+    // Transform backend response to match frontend expectations
+    return {
+      settings: {
+        autoRefreshTokens: response.preferences?.auto_refresh_tokens ?? true,
+        defaultAccountId: response.preferences?.default_account_id ?? null,
+        notificationPreferences: {
+          email: response.preferences?.email_notifications ?? true,
+          inApp: response.preferences?.notifications_enabled ?? true,
+        },
+        dashboardLayout: (response.preferences?.dashboard_layout ?? 'grid') as 'grid' | 'list',
+      }
+    };
   }
 
   // Refresh account token
