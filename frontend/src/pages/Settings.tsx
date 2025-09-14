@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { ResponsiveBreadcrumbNav } from '@/components/ui/breadcrumb';
 import { useUser } from '@clerk/clerk-react';
 import { Settings as SettingsIcon, User, Bell, Shield, Palette } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme-toggle';
@@ -15,6 +16,8 @@ export const SettingsPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      <ResponsiveBreadcrumbNav />
+
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
         <p className="text-muted-foreground">

@@ -28,6 +28,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { ResponsiveBreadcrumbNav } from '@/components/ui/breadcrumb';
 import { AccountCard, AccountCardSkeleton } from './AccountCard';
 import { AccountDetailsModal } from './AccountDetailsModal';
 import { ReauthorizationFlow } from './ReauthorizationFlow';
@@ -288,6 +289,9 @@ export const AccountManagementPage: React.FC<AccountManagementPageProps> = ({
 
   return (
     <div className={cn("space-y-6", className)}>
+      {/* Breadcrumb Navigation */}
+      <ResponsiveBreadcrumbNav />
+
       {/* Page Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>

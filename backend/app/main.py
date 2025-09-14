@@ -23,6 +23,7 @@ from app.middleware.error_handler import (
 )
 from app.core.exceptions import OAuthException
 from app.services.refresh_service import start_refresh_service, stop_refresh_service
+from app.services.token_refresh_scheduler import get_token_refresh_scheduler
 
 # Configure logging
 logger = configure_logging()
@@ -35,15 +36,31 @@ async def lifespan(app: FastAPI):
     """
     # Startup
     logger.info("Starting application", version=settings.api_version)
-    
+
     # Start background token refresh service
     refresh_task = await start_refresh_service()
-    
+
+    # Start token refresh scheduler
+    try:
+        token_scheduler = get_token_refresh_scheduler()
+        await token_scheduler.start()
+        logger.info("Token refresh scheduler started")
+    except Exception as e:
+        logger.error(f"Failed to start token refresh scheduler: {e}")
+
     yield
-    
+
     # Shutdown
     logger.info("Shutting down application")
-    
+
+    # Stop token refresh scheduler
+    try:
+        token_scheduler = get_token_refresh_scheduler()
+        await token_scheduler.stop()
+        logger.info("Token refresh scheduler stopped")
+    except Exception as e:
+        logger.error(f"Error stopping token refresh scheduler: {e}")
+
     # Stop background services
     await stop_refresh_service(refresh_task)
 

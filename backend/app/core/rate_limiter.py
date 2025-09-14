@@ -7,6 +7,9 @@ import random
 from typing import Optional, Callable, Any, TypeVar
 from functools import wraps
 import structlog
+from datetime import datetime, timezone
+from typing import Dict
+from supabase import Client
 
 logger = structlog.get_logger()
 
@@ -36,7 +39,9 @@ class ExponentialBackoffRateLimiter:
         max_retries: int = 5,
         base_delay: float = 1.0,
         max_delay: float = 60.0,
-        rate_limit: int = 2  # requests per second
+        rate_limit: int = 2,  # requests per second
+        supabase_client: Optional[Client] = None,
+        user_id: Optional[str] = None
     ):
         self.max_retries = max_retries
         self.base_delay = base_delay
@@ -46,11 +51,15 @@ class ExponentialBackoffRateLimiter:
         self.consecutive_failures = 0
         self.circuit_open = False
         self.circuit_open_until = 0
+        self.supabase_client = supabase_client
+        self.user_id = user_id
+        self.endpoint_tracking: Dict[str, dict] = {}
 
     async def execute_with_retry(
         self,
         func: Callable,
         *args,
+        endpoint: Optional[str] = None,
         **kwargs
     ) -> Any:
         """
@@ -97,10 +106,18 @@ class ExponentialBackoffRateLimiter:
                 # Record successful request
                 self.request_times.append(time.time())
 
+                # Track successful request in database
+                if endpoint:
+                    await self._track_request(endpoint, success=True)
+
                 return result
 
             except RateLimitError as e:
                 self.consecutive_failures += 1
+
+                # Track rate limit hit in database
+                if endpoint:
+                    await self._track_rate_limit_hit(endpoint, e.retry_after)
 
                 if attempt == self.max_retries - 1:
                     # Open circuit breaker after max retries
@@ -208,6 +225,100 @@ class ExponentialBackoffRateLimiter:
         self.consecutive_failures = 0
         self.circuit_open = False
         self.circuit_open_until = 0
+        self.endpoint_tracking = {}
+
+    async def _track_request(self, endpoint: str, success: bool = True):
+        """Track API request in database"""
+        if not self.supabase_client or not self.user_id:
+            return
+
+        try:
+            # Initialize endpoint tracking if needed
+            if endpoint not in self.endpoint_tracking:
+                self.endpoint_tracking[endpoint] = {
+                    'request_count': 0,
+                    'limit_hit_count': 0,
+                    'window_start': datetime.now(timezone.utc)
+                }
+
+            # Update local tracking
+            self.endpoint_tracking[endpoint]['request_count'] += 1
+
+            # Update database periodically (every 10 requests or on window reset)
+            if self.endpoint_tracking[endpoint]['request_count'] % 10 == 0:
+                await self._update_database_tracking(endpoint)
+
+        except Exception as e:
+            logger.warning("Failed to track request", error=str(e), endpoint=endpoint)
+
+    async def _track_rate_limit_hit(self, endpoint: str, retry_after: Optional[int]):
+        """Track rate limit hit in database"""
+        if not self.supabase_client or not self.user_id:
+            return
+
+        try:
+            # Initialize endpoint tracking if needed
+            if endpoint not in self.endpoint_tracking:
+                self.endpoint_tracking[endpoint] = {
+                    'request_count': 0,
+                    'limit_hit_count': 0,
+                    'window_start': datetime.now(timezone.utc)
+                }
+
+            # Update local tracking
+            self.endpoint_tracking[endpoint]['limit_hit_count'] += 1
+
+            # Immediately update database on rate limit hit
+            await self._update_database_tracking(endpoint, retry_after=retry_after)
+
+        except Exception as e:
+            logger.warning("Failed to track rate limit hit", error=str(e), endpoint=endpoint)
+
+    async def _update_database_tracking(self, endpoint: str, retry_after: Optional[int] = None):
+        """Update rate limit tracking in database"""
+        if not self.supabase_client or not self.user_id or endpoint not in self.endpoint_tracking:
+            return
+
+        try:
+            tracking = self.endpoint_tracking[endpoint]
+            now = datetime.now(timezone.utc)
+
+            # Check if we need to reset the window (1 hour windows)
+            if (now - tracking['window_start']).total_seconds() > 3600:
+                # Start new tracking window
+                tracking['request_count'] = 0
+                tracking['limit_hit_count'] = 0
+                tracking['window_start'] = now
+
+            # Prepare data for upsert
+            data = {
+                'user_id': self.user_id,
+                'endpoint': endpoint,
+                'request_count': tracking['request_count'],
+                'limit_hit_count': tracking['limit_hit_count'],
+                'window_start': tracking['window_start'].isoformat(),
+                'updated_at': now.isoformat()
+            }
+
+            if retry_after:
+                data['retry_after_seconds'] = retry_after
+                data['last_limit_hit'] = now.isoformat()
+
+            # Upsert to database
+            self.supabase_client.table('rate_limit_tracking').upsert(
+                data,
+                on_conflict='user_id,endpoint,window_start'
+            ).execute()
+
+            logger.debug(
+                "Updated rate limit tracking",
+                endpoint=endpoint,
+                request_count=tracking['request_count'],
+                limit_hits=tracking['limit_hit_count']
+            )
+
+        except Exception as e:
+            logger.error("Failed to update database tracking", error=str(e), endpoint=endpoint)
 
 
 # Global rate limiter instance

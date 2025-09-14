@@ -1052,3 +1052,66 @@ async def batch_operations(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Batch operation failed: {str(e)}"
         )
+
+
+@router.post("/refresh-token", response_model=Dict[str, Any])
+async def manual_token_refresh(
+    current_user: Dict = Depends(RequireAuth),
+    supabase = Depends(get_supabase_client)
+):
+    """
+    Manually trigger token refresh for the current user
+
+    This endpoint allows testing the token refresh functionality
+    and can be used to proactively refresh tokens before they expire.
+    """
+    from app.services.token_refresh_scheduler import get_token_refresh_scheduler
+
+    # Get user ID from context
+    user_context = current_user
+    user_id = user_context.get("user_id")
+
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found in database. Please log out and log in again."
+        )
+
+    try:
+        # Get the scheduler instance
+        scheduler = get_token_refresh_scheduler()
+
+        # Trigger manual refresh
+        result = await scheduler.manual_refresh(user_id)
+
+        if result['success']:
+            logger.info(
+                "Manual token refresh successful",
+                user_id=user_id,
+                token_id=result.get('token_id')
+            )
+            return {
+                "status": "success",
+                "message": result.get('message', 'Token refreshed successfully'),
+                "token_id": result.get('token_id'),
+                "refreshed_at": datetime.now(timezone.utc).isoformat()
+            }
+        else:
+            logger.warning(
+                "Manual token refresh failed",
+                user_id=user_id,
+                error=result.get('error')
+            )
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=result.get('error', 'Token refresh failed')
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Manual token refresh error", user_id=user_id, error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Token refresh failed: {str(e)}"
+        )
