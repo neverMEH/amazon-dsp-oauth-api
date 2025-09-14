@@ -99,9 +99,14 @@ export const AmazonAccountsList: React.FC<AmazonAccountsListProps> = ({
     setError(null);
 
     try {
+      const token = await getAuthToken();
+      if (!token) {
+        throw new Error('No authentication token available');
+      }
+
       const response = await fetch('/api/v1/accounts/amazon-ads-accounts', {
         headers: {
-          'Authorization': `Bearer ${await getAuthToken()}`,
+          'Authorization': `Bearer ${token}`,
         },
       });
 
@@ -156,10 +161,15 @@ export const AmazonAccountsList: React.FC<AmazonAccountsListProps> = ({
     setIsSyncing(true);
 
     try {
+      const token = await getAuthToken();
+      if (!token) {
+        throw new Error('No authentication token available');
+      }
+
       const response = await fetch('/api/v1/accounts/sync', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${await getAuthToken()}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });
@@ -240,11 +250,23 @@ export const AmazonAccountsList: React.FC<AmazonAccountsListProps> = ({
     fetchAccounts();
   }, [fetchAccounts]);
 
-  // Get auth token (placeholder - implement based on your auth method)
-  async function getAuthToken(): Promise<string> {
-    // This should be implemented based on your authentication method
-    // For example, getting a Clerk token or other auth token
-    return 'your-auth-token';
+  // Get auth token from Clerk
+  async function getAuthToken(): Promise<string | null> {
+    // @ts-ignore - Clerk is available globally
+    const clerk = window.Clerk;
+    if (!clerk || !clerk.session) {
+      console.warn('Clerk not initialized or no active session');
+      return null;
+    }
+
+    try {
+      // Get the session token - this is what the backend expects
+      const token = await clerk.session.getToken();
+      return token;
+    } catch (error) {
+      console.error('Failed to get Clerk token:', error);
+      return null;
+    }
   }
 
   // Render status badge

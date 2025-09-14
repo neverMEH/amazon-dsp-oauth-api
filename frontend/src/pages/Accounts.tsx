@@ -51,9 +51,15 @@ const AccountsPage: React.FC = () => {
   const checkConnectionStatus = useCallback(async () => {
     setConnectionStatus('checking');
     try {
+      const token = await getAuthToken();
+      if (!token) {
+        setConnectionStatus('error');
+        return;
+      }
+
       const response = await fetch('/api/v1/auth/status', {
         headers: {
-          'Authorization': `Bearer ${await getAuthToken()}`,
+          'Authorization': `Bearer ${token}`,
         },
       });
 
@@ -73,10 +79,15 @@ const AccountsPage: React.FC = () => {
   const handleConnectAmazon = useCallback(async () => {
     setIsConnecting(true);
     try {
+      const token = await getAuthToken();
+      if (!token) {
+        throw new Error('No authentication token available');
+      }
+
       // Initiate OAuth flow
       const response = await fetch('/api/v1/auth/amazon/login', {
         headers: {
-          'Authorization': `Bearer ${await getAuthToken()}`,
+          'Authorization': `Bearer ${token}`,
         },
       });
 
@@ -129,9 +140,14 @@ const AccountsPage: React.FC = () => {
   // Export accounts data
   const handleExportAccounts = useCallback(async () => {
     try {
+      const token = await getAuthToken();
+      if (!token) {
+        throw new Error('No authentication token available');
+      }
+
       const response = await fetch('/api/v1/accounts/amazon-ads-accounts', {
         headers: {
-          'Authorization': `Bearer ${await getAuthToken()}`,
+          'Authorization': `Bearer ${token}`,
         },
       });
 
@@ -170,10 +186,23 @@ const AccountsPage: React.FC = () => {
     });
   }, [toast]);
 
-  // Get auth token (placeholder)
-  async function getAuthToken(): Promise<string> {
-    // Implement based on your auth method
-    return 'your-auth-token';
+  // Get auth token from Clerk
+  async function getAuthToken(): Promise<string | null> {
+    // @ts-ignore - Clerk is available globally
+    const clerk = window.Clerk;
+    if (!clerk || !clerk.session) {
+      console.warn('Clerk not initialized or no active session');
+      return null;
+    }
+
+    try {
+      // Get the session token - this is what the backend expects
+      const token = await clerk.session.getToken();
+      return token;
+    } catch (error) {
+      console.error('Failed to get Clerk token:', error);
+      return null;
+    }
   }
 
   // Check connection status on mount
