@@ -1,7 +1,8 @@
 """
 Clerk authentication middleware
 """
-from fastapi import Request, HTTPException, status, Depends
+from fastapi import Request, HTTPException, Depends
+from fastapi import status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional, Dict, Any, Callable
 import structlog
@@ -20,7 +21,14 @@ class ClerkAuthMiddleware:
     def __init__(self):
         """Initialize middleware"""
         self.clerk_service = ClerkService()
-        self.user_service = UserService()
+        self._user_service = None
+
+    @property
+    def user_service(self):
+        """Lazy initialization of user service"""
+        if self._user_service is None:
+            self._user_service = UserService()
+        return self._user_service
     
     async def authenticate_request(self, request: Request) -> Optional[Dict[str, Any]]:
         """
