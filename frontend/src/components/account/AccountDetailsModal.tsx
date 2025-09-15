@@ -28,8 +28,10 @@ import {
   Hash,
   MapPin,
   DollarSign,
-  Building
+  Building,
+  HelpCircle
 } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Account, RefreshHistory, AccountDetailsResponse } from '@/types/account';
 import { AccountHealthIndicator } from './AccountHealthIndicator';
 import { accountService } from '@/services/accountService';
@@ -305,6 +307,53 @@ export const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
                       <span className="text-sm">{account.profileDetails.timezone}</span>
                     </div>
                   </div>
+
+                  {/* Marketplace-specific IDs */}
+                  {account.metadata?.alternate_ids?.length > 0 && (
+                    <>
+                      <Separator />
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-semibold">Marketplace-Specific IDs</h4>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <HelpCircle className="h-3 w-3 text-muted-foreground cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent side="right" className="max-w-xs">
+                                <p className="text-xs">
+                                  Each marketplace has unique Profile and Entity IDs. Use the appropriate Profile ID
+                                  when making API calls to a specific marketplace.
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                        <div className="space-y-3">
+                          {account.metadata.alternate_ids.map((altId: any) => (
+                            <div key={altId.countryCode} className="p-3 border rounded-lg space-y-2">
+                              <div className="flex items-center gap-2">
+                                <Globe className="h-4 w-4 text-muted-foreground" />
+                                <Badge variant="outline" className="font-semibold">
+                                  {altId.countryCode}
+                                </Badge>
+                              </div>
+                              <div className="grid grid-cols-2 gap-4 ml-6">
+                                <div className="space-y-1">
+                                  <div className="text-xs text-muted-foreground">Profile ID</div>
+                                  <span className="text-sm font-mono">{altId.profileId || 'N/A'}</span>
+                                </div>
+                                <div className="space-y-1">
+                                  <div className="text-xs text-muted-foreground">Entity ID</div>
+                                  <span className="text-sm font-mono">{altId.entityId || 'N/A'}</span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
 
                   {account.profileDetails.accountInfo && (
                     <>
