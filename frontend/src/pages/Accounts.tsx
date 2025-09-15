@@ -46,6 +46,7 @@ const AccountsPage: React.FC = () => {
   const [accountToDisconnect, setAccountToDisconnect] = useState<string | null>(null);
   const [isDisconnecting, setIsDisconnecting] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'checking' | 'connected' | 'error'>('idle');
+  const [hasAccounts, setHasAccounts] = useState(false);
 
   // Check Amazon connection status
   const checkConnectionStatus = useCallback(async () => {
@@ -205,10 +206,28 @@ const AccountsPage: React.FC = () => {
     }
   }
 
+  // Check if there are any accounts available
+  const checkAccountsAvailable = useCallback(async () => {
+    try {
+      const token = await getAuthToken();
+      if (!token) {
+        setHasAccounts(false);
+        return;
+      }
+
+      const response = await accountService.getAccounts();
+      setHasAccounts(response.accounts.length > 0);
+    } catch (error) {
+      console.error('Failed to check accounts:', error);
+      setHasAccounts(false);
+    }
+  }, []);
+
   // Check connection status on mount
   React.useEffect(() => {
     checkConnectionStatus();
-  }, [checkConnectionStatus]);
+    checkAccountsAvailable();
+  }, [checkConnectionStatus, checkAccountsAvailable]);
 
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-6">
@@ -232,17 +251,22 @@ const AccountsPage: React.FC = () => {
           </Button>
           <Button
             onClick={handleConnectAmazon}
-            disabled={isConnecting || connectionStatus === 'connected'}
+            disabled={isConnecting || (connectionStatus === 'connected' && hasAccounts)}
           >
             {isConnecting ? (
               <>
                 <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
                 Connecting...
               </>
-            ) : connectionStatus === 'connected' ? (
+            ) : connectionStatus === 'connected' && hasAccounts ? (
               <>
                 <CheckCircle className="h-4 w-4 mr-2" />
                 Connected
+              </>
+            ) : connectionStatus === 'connected' && !hasAccounts ? (
+              <>
+                <Plus className="h-4 w-4 mr-2" />
+                Reconnect Amazon Account
               </>
             ) : (
               <>
