@@ -25,9 +25,10 @@ export const AccountTypeTabs: React.FC<AccountTypeTabsProps> = ({
 }) => {
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState<AccountType>(
-    (searchParams.get('type') as AccountType) || 'sponsored-ads'
-  );
+  const [activeTab, setActiveTab] = useState<AccountType>(() => {
+    const typeParam = searchParams.get('type') as AccountType;
+    return ['sponsored-ads', 'dsp', 'amc'].includes(typeParam) ? typeParam : 'sponsored-ads';
+  });
 
   // Query for Sponsored Ads accounts
   const sponsoredAdsQuery = useQuery({
@@ -70,6 +71,14 @@ export const AccountTypeTabs: React.FC<AccountTypeTabsProps> = ({
   useEffect(() => {
     setSearchParams({ type: activeTab });
   }, [activeTab, setSearchParams]);
+
+  // Update active tab when URL changes
+  useEffect(() => {
+    const typeParam = searchParams.get('type') as AccountType;
+    if (['sponsored-ads', 'dsp', 'amc'].includes(typeParam) && typeParam !== activeTab) {
+      setActiveTab(typeParam);
+    }
+  }, [searchParams, activeTab]);
 
   // Get account counts for badges
   const sponsoredAdsCount = (sponsoredAdsQuery.data as any)?.totalCount || (sponsoredAdsQuery.data as any)?.accounts?.length || 0;
