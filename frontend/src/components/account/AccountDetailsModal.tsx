@@ -191,24 +191,6 @@ export const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
                   </Badge>
                 </div>
 
-                {/* Marketplace(s) */}
-                <div className="space-y-2">
-                  <div className="text-sm font-medium text-muted-foreground flex items-center gap-1">
-                    <Globe className="h-3 w-3" />
-                    Marketplace{account.metadata?.country_codes?.length > 1 ? 's' : ''}
-                  </div>
-                  <div className="flex flex-wrap gap-1">
-                    {account.metadata?.country_codes?.length > 0 ? (
-                      account.metadata.country_codes.map((code: string) => (
-                        <Badge key={code} variant="outline">{code}</Badge>
-                      ))
-                    ) : (
-                      <Badge variant="outline">
-                        {account.marketplace?.countryCode || account.metadata?.country_code || 'N/A'}
-                      </Badge>
-                    )}
-                  </div>
-                </div>
 
                 {/* Region */}
                 <div className="space-y-2">
@@ -266,6 +248,87 @@ export const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
                     {new Date(account.updatedAt).toLocaleString()}
                   </span>
                 </div>
+              </div>
+
+              {/* Marketplace Management Table in Overview - Always Show */}
+              <div className="mt-6 space-y-3">
+                  <Separator />
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-sm font-semibold">Marketplace Details</h4>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <HelpCircle className="h-3 w-3 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent side="right" className="max-w-xs">
+                          <p className="text-xs">
+                            Each marketplace has unique IDs. Use the appropriate Profile ID when making API calls to a specific marketplace.
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+
+                  <div className="border rounded-lg">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[100px]">Marketplace</TableHead>
+                          <TableHead>Profile ID</TableHead>
+                          <TableHead>Entity ID</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {account.metadata?.alternate_ids?.length > 0 ? (
+                          account.metadata.alternate_ids.map((altId: any) => (
+                            <TableRow key={altId.countryCode}>
+                              <TableCell>
+                                <Badge variant="outline" className="font-semibold">
+                                  {altId.countryCode}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="font-mono text-sm">
+                                {altId.profileId || 'N/A'}
+                              </TableCell>
+                              <TableCell className="font-mono text-sm">
+                                {altId.entityId || 'N/A'}
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        ) : account.metadata?.country_codes?.length > 0 ? (
+                          account.metadata.country_codes.map((code: string) => (
+                            <TableRow key={code}>
+                              <TableCell>
+                                <Badge variant="outline" className="font-semibold">
+                                  {code}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="font-mono text-sm">
+                                {account.profileDetails?.profileId || 'N/A'}
+                              </TableCell>
+                              <TableCell className="font-mono text-sm">
+                                {account.accountId || 'N/A'}
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        ) : (
+                          <TableRow>
+                            <TableCell>
+                              <Badge variant="outline" className="font-semibold">
+                                {account.marketplace?.countryCode || 'N/A'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="font-mono text-sm">
+                              {account.profileDetails?.profileId || 'N/A'}
+                            </TableCell>
+                            <TableCell className="font-mono text-sm">
+                              {account.accountId || 'N/A'}
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
               </div>
             </TabsContent>
 
