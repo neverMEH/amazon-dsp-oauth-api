@@ -168,7 +168,12 @@ async def refresh_token_if_needed(user_id: str, token_data: Dict, supabase) -> D
             }
             
             supabase.table("oauth_tokens").update(update_data).eq("user_id", user_id).execute()
-            
+
+            # Update all user accounts' last_synced_at since they share the same token
+            supabase.table("user_accounts").update({
+                "last_synced_at": now.isoformat()
+            }).eq("user_id", user_id).execute()
+
             return {
                 "access_token": new_tokens.access_token,
                 "refresh_token": new_tokens.refresh_token,
@@ -883,12 +888,12 @@ async def reauthorize_account(
                 }
                 
                 supabase.table("oauth_tokens").update(update_data).eq("user_id", user_id).execute()
-                
-                # Update account status
+
+                # Update ALL user accounts' status and last_synced_at since they share the same token
                 supabase.table("user_accounts").update({
                     "status": "active",
                     "last_synced_at": datetime.now(timezone.utc).isoformat()
-                }).eq("id", account_id).execute()
+                }).eq("user_id", user_id).execute()
                 
                 return ReauthorizeResponse(
                     status="success",
@@ -909,11 +914,11 @@ async def reauthorize_account(
             token_refreshed = refreshed_token != token_data
             
             if token_refreshed:
-                # Update account status
+                # Update ALL user accounts' status and last_synced_at since they share the same token
                 supabase.table("user_accounts").update({
                     "status": "active",
                     "last_synced_at": datetime.now(timezone.utc).isoformat()
-                }).eq("id", account_id).execute()
+                }).eq("user_id", user_id).execute()
             
             expires_at = datetime.fromisoformat(refreshed_token["expires_at"].replace('Z', '+00:00'))
             
