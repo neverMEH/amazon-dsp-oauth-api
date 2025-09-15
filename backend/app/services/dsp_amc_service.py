@@ -155,6 +155,8 @@ class DSPAMCService:
             TokenRefreshError: If token is invalid
             RateLimitError: If rate limit exceeded
         """
+        # AMC instances might require advertiser IDs, but let's try without first
+        # If it fails with missing entityId, we'll need to get DSP advertisers first
         headers = {
             "Authorization": f"Bearer {access_token}",
             "Amazon-Advertising-API-ClientId": settings.amazon_client_id,
@@ -166,6 +168,7 @@ class DSPAMCService:
 
         try:
             async with httpx.AsyncClient() as client:
+                # First try without parameters
                 response = await client.get(
                     url,
                     headers=headers,

@@ -1,15 +1,16 @@
 import { useUser, useClerk } from '@clerk/clerk-react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { 
-  LayoutDashboard, 
-  Users, 
-  Settings, 
-  LogOut, 
-  User, 
+import {
+  LayoutDashboard,
+  Users,
+  Settings,
+  LogOut,
+  User,
   Menu,
   Bell,
   Search,
-  ChevronDown
+  ChevronDown,
+  Database
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
@@ -29,6 +30,7 @@ import { cn } from '@/lib/utils'
 const navigationItems = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Accounts', href: '/accounts', icon: Users },
+  { name: 'AMC', href: '/amc', icon: Database },
   { name: 'Settings', href: '/settings', icon: Settings },
 ]
 

@@ -10,6 +10,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { TokenResponse } from '@/services/api';
 import { AccountManagementPage } from '@/components/account/AccountManagementPage';
 import { SettingsPage } from '@/pages/Settings';
+import AMC from '@/pages/AMC';
 
 // Legacy components for backward compatibility
 import { OAuthLogin } from '@/components/OAuthLogin';
@@ -89,15 +90,25 @@ function App() {
                     </ProtectedRoute>
                   } 
                 />
-                <Route 
-                  path="/settings" 
+                <Route
+                  path="/settings"
                   element={
                     <ProtectedRoute>
                       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 dark:from-slate-900 dark:to-slate-800 px-4 sm:px-6 lg:px-8 py-6">
                         <SettingsPage />
                       </div>
                     </ProtectedRoute>
-                  } 
+                  }
+                />
+                <Route
+                  path="/amc"
+                  element={
+                    <ProtectedRoute>
+                      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 dark:from-slate-900 dark:to-slate-800 px-4 sm:px-6 lg:px-8 py-6">
+                        <AMC />
+                      </div>
+                    </ProtectedRoute>
+                  }
                 />
                 <Route 
                   path="/profile" 

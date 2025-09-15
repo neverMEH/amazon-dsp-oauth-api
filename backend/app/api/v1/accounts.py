@@ -191,6 +191,54 @@ async def refresh_token_if_needed(user_id: str, token_data: Dict, supabase) -> D
 # API ENDPOINTS
 # ============================================================================
 
+@router.get("/amc-instances")
+async def get_amc_instances(
+    current_user: Dict = Depends(RequireAuth)
+) -> Dict[str, Any]:
+    """
+    Get AMC instances for the current user
+
+    Returns:
+        Dictionary containing AMC instances
+    """
+    try:
+        # Get user's OAuth token
+        user_id = current_user["user_id"]
+        logger.info(f"Fetching AMC instances for user {user_id}")
+
+        # Get token from token service
+        oauth_token = await token_service.get_user_token(user_id)
+
+        if not oauth_token:
+            logger.warning(f"No OAuth token found for user {user_id}")
+            return {"instances": [], "message": "No authentication found"}
+
+        # Get access token
+        access_token = oauth_token.get("access_token")
+
+        # Fetch AMC instances from service
+        amc_instances = await dsp_amc_service.list_amc_instances(access_token)
+
+        logger.info(f"Retrieved {len(amc_instances)} AMC instances")
+
+        return {
+            "instances": amc_instances,
+            "total": len(amc_instances)
+        }
+
+    except TokenRefreshError as e:
+        logger.warning(f"Token refresh error: {str(e)}")
+        raise HTTPException(
+            status_code=401,
+            detail="Authentication token expired. Please re-authenticate."
+        )
+    except Exception as e:
+        logger.error(f"Error fetching AMC instances: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to fetch AMC instances: {str(e)}"
+        )
+
 @router.get("/all-account-types")
 async def list_all_account_types(
     current_user: Dict = Depends(RequireAuth),
