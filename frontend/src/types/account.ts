@@ -99,9 +99,12 @@ export interface DisconnectAccountResponse {
 }
 
 export interface ReauthorizeResponse {
-  success: boolean;
+  status?: string;
+  success?: boolean;
   authorizationUrl?: string;
   message: string;
+  token_refreshed?: boolean;
+  expires_at?: string;
 }
 
 export interface RefreshHistoryResponse {

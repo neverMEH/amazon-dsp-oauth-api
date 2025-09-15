@@ -71,11 +71,21 @@ export const ReauthorizationFlow: React.FC<ReauthorizationFlowProps> = ({
 
     try {
       const response = await accountService.reauthorizeAccount(account.id);
-      
-      if (response.success && response.authorizationUrl) {
+
+      // Check if the response indicates success
+      if (response.status === 'success' || response.token_refreshed) {
+        setProgress(75);
+        setCurrentStep('processing');
+
+        // Since reauthorize just refreshes the token, we can immediately check status
+        setTimeout(() => {
+          checkAuthorizationStatus();
+        }, 1000);
+      } else if (response.authorizationUrl) {
+        // If there's an authorization URL (for future OAuth flow)
         setAuthorizationUrl(response.authorizationUrl);
         setProgress(50);
-        
+
         // Open authorization URL in new window
         const authWindow = window.open(
           response.authorizationUrl,
@@ -86,7 +96,7 @@ export const ReauthorizationFlow: React.FC<ReauthorizationFlowProps> = ({
         // Start polling for completion
         setCurrentStep('processing');
         setProgress(75);
-        
+
         // Check if window is closed
         const checkInterval = setInterval(() => {
           if (authWindow && authWindow.closed) {
@@ -95,7 +105,7 @@ export const ReauthorizationFlow: React.FC<ReauthorizationFlowProps> = ({
           }
         }, 1000);
       } else {
-        throw new Error(response.message || 'Failed to get authorization URL');
+        throw new Error(response.message || 'Token refresh failed');
       }
     } catch (error) {
       console.error('Reauthorization failed:', error);
