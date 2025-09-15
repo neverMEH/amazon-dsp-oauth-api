@@ -227,7 +227,8 @@ export const AmazonAccountsList: React.FC<AmazonAccountsListProps> = ({
   const availableCountries = useMemo(() => {
     const countries = new Set<string>();
     accounts.forEach(account => {
-      account.countryCodes?.forEach(code => countries.add(code));
+      const codes = account.metadata?.countryCodes || account.countryCodes;
+      codes?.forEach(code => countries.add(code));
     });
     return Array.from(countries).sort();
   }, [accounts]);
@@ -479,11 +480,11 @@ export const AmazonAccountsList: React.FC<AmazonAccountsListProps> = ({
                     <CardContent className="pt-0">
                       <div className="space-y-4">
                         {/* Profile Details */}
-                        {originalAccount?.alternateIds && originalAccount.alternateIds.length > 0 && (
+                        {originalAccount?.metadata?.alternateIds && originalAccount.metadata.alternateIds.length > 0 && (
                           <div>
                             <h4 className="text-sm font-semibold mb-2">Profiles by Country</h4>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                              {originalAccount.alternateIds.map((profile, idx) => (
+                              {originalAccount.metadata.alternateIds.map((profile, idx) => (
                                 <div
                                   key={idx}
                                   className="p-2 border rounded-md bg-muted/30"
