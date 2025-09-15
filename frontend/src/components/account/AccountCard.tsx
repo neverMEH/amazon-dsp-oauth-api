@@ -181,7 +181,8 @@ export const AccountCard: React.FC<AccountCardProps> = ({
             <span>Marketplaces</span>
           </div>
           <Badge variant="secondary" className="font-semibold">
-            {account.metadata?.country_codes?.length ||
+            {account.metadata?.alternate_ids?.length ||
+             account.metadata?.country_codes?.length ||
              (account.marketplace?.countryCode ? 1 : 0)}
           </Badge>
         </div>

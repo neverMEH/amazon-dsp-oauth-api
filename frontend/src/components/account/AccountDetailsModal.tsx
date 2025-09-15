@@ -368,8 +368,8 @@ export const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
                                   </TableCell>
                                 </TableRow>
                               ))
-                            ) : account.metadata?.country_codes?.length > 0 ? (
-                              // If we have country_codes but no alternate_ids, show them in a single row
+                            ) : account.metadata?.country_codes?.length > 0 && !account.metadata?.alternate_ids?.length ? (
+                              // Only show country_codes if we DON'T have alternate_ids (to avoid duplication)
                               <TableRow className="group">
                                 <TableCell>
                                   <div className="flex flex-wrap gap-1">
