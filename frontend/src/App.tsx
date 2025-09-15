@@ -1,5 +1,6 @@
 import { ClerkProvider, SignedIn, SignedOut } from '@clerk/clerk-react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Dashboard } from '@/components/Dashboard';
 import { SignInPage } from '@/pages/SignIn';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
@@ -26,9 +27,30 @@ if (!PUBLISHABLE_KEY) {
   throw new Error("Missing Publishable Key")
 }
 
+// Create a client
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      gcTime: 10 * 60 * 1000, // 10 minutes
+      retry: (failureCount, error) => {
+        // Don't retry on 4xx errors except 408, 429
+        if (error instanceof Error && 'status' in error) {
+          const status = (error as any).status;
+          if (status >= 400 && status < 500 && status !== 408 && status !== 429) {
+            return false;
+          }
+        }
+        return failureCount < 3;
+      },
+    },
+  },
+});
+
 function App() {
   return (
-    <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
+    <QueryClientProvider client={queryClient}>
+      <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
       <ErrorBoundary>
         <ThemeProvider defaultTheme="system" storageKey="amazon-dsp-theme">
           <div className="relative">
@@ -147,6 +169,7 @@ function App() {
         </ThemeProvider>
       </ErrorBoundary>
     </ClerkProvider>
+    </QueryClientProvider>
   );
 }
 
