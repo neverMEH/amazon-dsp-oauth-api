@@ -148,7 +148,7 @@ export function StatsCards() {
       <Card>
         <CardHeader>
           <CardTitle>No Statistics Available</CardTitle>
-          <CardDescription>Connect your Amazon DSP accounts to see statistics</CardDescription>
+          <CardDescription>Connect your Amazon accounts to see statistics</CardDescription>
         </CardHeader>
       </Card>
     )

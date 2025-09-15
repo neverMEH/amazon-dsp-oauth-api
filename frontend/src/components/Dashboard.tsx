@@ -105,7 +105,7 @@ export function Dashboard() {
               Welcome back, {user?.firstName}!
             </h1>
             <p className="text-muted-foreground mt-1">
-              Here's what's happening with your Amazon DSP campaigns today.
+              Here's what's happening with your neverMEH campaigns today.
             </p>
           </div>
           <AccountSwitcher />

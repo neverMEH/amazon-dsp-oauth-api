@@ -223,7 +223,7 @@ export const ReauthorizationFlow: React.FC<ReauthorizationFlowProps> = ({
                   </li>
                   <li className="flex items-start gap-2">
                     <ArrowRight className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                    <span>Log in with your Amazon DSP account credentials</span>
+                    <span>Log in with your Amazon account credentials</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <ArrowRight className="h-4 w-4 mt-0.5 flex-shrink-0" />
@@ -324,7 +324,7 @@ export const ReauthorizationFlow: React.FC<ReauthorizationFlowProps> = ({
                 <ul className="space-y-1 text-muted-foreground list-disc list-inside">
                   <li>Check your internet connection</li>
                   <li>Ensure popup blockers are disabled for this site</li>
-                  <li>Verify your Amazon DSP credentials are correct</li>
+                  <li>Verify your Amazon credentials are correct</li>
                   <li>Make sure you have the necessary permissions</li>
                 </ul>
               </div>

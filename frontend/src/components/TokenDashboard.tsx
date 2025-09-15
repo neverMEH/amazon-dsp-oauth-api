@@ -128,7 +128,7 @@ export function TokenDashboard({ tokens: initialTokens }: TokenDashboardProps) {
           <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <h1 className="text-3xl font-bold">Token Dashboard</h1>
-              <p className="text-muted-foreground mt-1">Manage your Amazon DSP OAuth tokens</p>
+              <p className="text-muted-foreground mt-1">Manage your neverMEH OAuth tokens</p>
             </div>
             <div className="flex gap-2">
               <Tooltip>
@@ -157,7 +157,7 @@ export function TokenDashboard({ tokens: initialTokens }: TokenDashboardProps) {
             <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
             <AlertTitle>Successfully Authenticated</AlertTitle>
             <AlertDescription>
-              Your Amazon DSP OAuth tokens have been retrieved successfully.
+              Your neverMEH OAuth tokens have been retrieved successfully.
             </AlertDescription>
           </Alert>
 

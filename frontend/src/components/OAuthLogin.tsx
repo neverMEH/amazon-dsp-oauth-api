@@ -70,7 +70,7 @@ export function OAuthLogin() {
             <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center animate-in fade-in zoom-in duration-500">
               <Shield className="h-6 w-6 text-primary" />
             </div>
-            <CardTitle className="text-2xl font-bold">Amazon DSP OAuth</CardTitle>
+            <CardTitle className="text-2xl font-bold">neverMEH OAuth</CardTitle>
             <CardDescription>
               Connect your Amazon Advertising account securely
             </CardDescription>
@@ -163,7 +163,7 @@ export function OAuthLogin() {
                 API v1.0.0
               </Badge>
               <Badge variant="outline" className="text-xs">
-                Amazon DSP
+                neverMEH
               </Badge>
             </div>
           </CardContent>

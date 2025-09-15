@@ -74,7 +74,7 @@ export function AuthDashboard() {
               Authentication Status
             </CardTitle>
             <CardDescription>
-              Your Amazon DSP OAuth connection details
+              Your neverMEH OAuth connection details
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -83,7 +83,7 @@ export function AuthDashboard() {
                 <Alert className="border-green-500 bg-green-50 dark:bg-green-950">
                   <CheckCircle className="h-4 w-4 text-green-600" />
                   <AlertDescription className="text-green-800 dark:text-green-200">
-                    Successfully authenticated with Amazon DSP
+                    Successfully authenticated with neverMEH
                   </AlertDescription>
                 </Alert>
                 

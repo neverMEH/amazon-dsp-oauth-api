@@ -289,7 +289,7 @@ export const AccountManagementPage: React.FC<AccountManagementPageProps> = ({
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Account Management</h1>
           <p className="text-muted-foreground">
-            Manage your Amazon DSP accounts and connection settings
+            Manage your neverMEH accounts and connection settings
           </p>
         </div>
         
@@ -445,7 +445,7 @@ export const AccountManagementPage: React.FC<AccountManagementPageProps> = ({
                 <AlertDescription>
                   {searchQuery || statusFilter !== 'all'
                     ? "No accounts match your current filters. Try adjusting your search or filters."
-                    : "You haven't connected any Amazon DSP accounts yet. Click 'Sync from Amazon' to get started."}
+                    : "You haven't connected any neverMEH accounts yet. Click 'Sync from Amazon' to get started."}
                 </AlertDescription>
               </Alert>
             ) : (

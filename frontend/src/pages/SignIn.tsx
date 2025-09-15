@@ -19,9 +19,9 @@ export function SignInPage() {
       <div className="mb-8 text-center">
         <div className="flex items-center justify-center space-x-3 mb-4">
           <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-xl flex items-center justify-center">
-            <span className="text-white font-bold text-lg">AD</span>
+            <span className="text-white font-bold text-lg">NM</span>
           </div>
-          <h1 className="text-3xl font-bold text-foreground">Amazon DSP</h1>
+          <h1 className="text-3xl font-bold text-foreground">neverMEH</h1>
         </div>
         <p className="text-muted-foreground text-lg max-w-md mx-auto">
           Streamline your Amazon advertising campaigns with powerful analytics and automation
@@ -82,7 +82,7 @@ export function SignInPage() {
             </div>
             <h3 className="text-lg font-semibold text-foreground mb-2">Multi-Account Management</h3>
             <p className="text-muted-foreground text-sm">
-              Seamlessly manage multiple Amazon DSP accounts from one dashboard
+              Seamlessly manage multiple Amazon accounts from one dashboard
             </p>
           </div>
           
@@ -102,7 +102,7 @@ export function SignInPage() {
 
       {/* Footer */}
       <div className="mt-12 text-center text-sm text-muted-foreground">
-        <p>&copy; 2024 Amazon DSP Platform. Built with security and performance in mind.</p>
+        <p>&copy; 2024 neverMEH. Built with security and performance in mind.</p>
       </div>
     </div>
   )

@@ -15,7 +15,7 @@ export function ConnectionStatusDemo() {
 
         {/* Header */}
         <div className="max-w-4xl mx-auto mb-8">
-          <h1 className="text-4xl font-bold mb-2">Amazon DSP Connection Status</h1>
+          <h1 className="text-4xl font-bold mb-2">neverMEH Connection Status</h1>
           <p className="text-muted-foreground">
             Real-time monitoring and management of your OAuth token connection
           </p>

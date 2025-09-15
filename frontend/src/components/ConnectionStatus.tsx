@@ -139,7 +139,7 @@ export function ConnectionStatus({ className }: ConnectionStatusProps) {
                 <div className={cn('absolute inset-0 rounded-full', statusConfig.bgColor, 'blur-md')} />
                 <div className={cn('relative', statusConfig.color)}>{statusConfig.icon}</div>
               </div>
-              Amazon DSP Connection
+              neverMEH Connection
             </CardTitle>
             <CardDescription className="flex items-center gap-2">
               <Badge variant={statusConfig.badgeVariant} className="gap-1">
