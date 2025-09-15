@@ -3,7 +3,7 @@ OAuth authentication endpoints
 """
 from fastapi import APIRouter, Query, Header, HTTPException, Depends
 from fastapi.responses import JSONResponse, RedirectResponse
-from typing import Optional
+from typing import Optional, Dict, Any
 from datetime import datetime, timezone
 import structlog
 
@@ -18,6 +18,9 @@ from app.core.exceptions import (
 from app.services.token_service import token_service
 from app.services.account_service import account_service
 from app.services.amazon_oauth_service import amazon_oauth_service
+from app.services.user_service import UserService
+from app.services.dsp_amc_service import DSPAMCService
+from app.middleware.clerk_auth import RequireAuth, get_user_context
 from app.schemas.auth import (
     LoginResponse,
     CallbackResponse,
@@ -35,6 +38,10 @@ from app.schemas.auth import (
 logger = structlog.get_logger()
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+# Initialize services
+user_service = UserService()
+dsp_amc_service = DSPAMCService()
 
 
 @router.get("/amazon/login", response_model=LoginResponse)
@@ -63,7 +70,7 @@ async def login():
         
         # Generate authorization URL and state
         auth_url, state_token = oauth_client.generate_authorization_url()
-        
+
         # Store state token
         await token_service.store_state_token(
             state_token,
@@ -137,7 +144,35 @@ async def callback(
         
         # Store encrypted tokens
         stored_token = await token_service.store_tokens(token_data)
-        
+
+        # Fetch Amazon account data using the new access token
+        try:
+            access_token = token_data.get("access_token")
+            if access_token:
+                logger.info("Fetching Amazon account data after OAuth callback")
+
+                # Fetch all types of accounts (advertising, DSP, AMC)
+                account_data = await dsp_amc_service.list_all_account_types(
+                    access_token=access_token,
+                    include_regular=True,
+                    include_dsp=True,
+                    include_amc=True
+                )
+
+                logger.info("Successfully fetched Amazon accounts",
+                          advertising_count=len(account_data.get("advertising_accounts", [])),
+                          dsp_count=len(account_data.get("dsp_advertisers", [])),
+                          amc_count=len(account_data.get("amc_instances", [])))
+
+                # TODO: Create user and account records
+                # For now, just log the successful fetch
+                # We'll need to implement user association logic
+
+        except Exception as e:
+            # Don't fail the OAuth flow if account fetching fails
+            # Just log the error and continue
+            logger.warning("Failed to fetch Amazon account data after OAuth", error=str(e))
+
         # Redirect to frontend callback handler with success
         # The frontend will handle displaying the tokens
         # Remove trailing slash from frontend_url if present
