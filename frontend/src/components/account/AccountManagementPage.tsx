@@ -332,32 +332,32 @@ export const AccountManagementPage: React.FC<AccountManagementPageProps> = ({
       </div>
 
       {/* Status Overview */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <div className="flex items-center gap-3 p-4 border rounded-lg">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="flex items-center gap-3 p-4 border rounded-lg bg-card">
           <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-full">
             <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
           </div>
-          <div>
+          <div className="flex-1">
             <p className="text-sm text-muted-foreground">Active</p>
             <p className="text-2xl font-bold">{statusCounts.active}</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 p-4 border rounded-lg">
+        <div className="flex items-center gap-3 p-4 border rounded-lg bg-card">
           <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-full">
             <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
           </div>
-          <div>
+          <div className="flex-1">
             <p className="text-sm text-muted-foreground">Needs Attention</p>
             <p className="text-2xl font-bold">{statusCounts.error}</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 p-4 border rounded-lg">
+        <div className="flex items-center gap-3 p-4 border rounded-lg bg-card">
           <div className="p-2 bg-gray-100 dark:bg-gray-900/30 rounded-full">
             <CircleOff className="h-5 w-5 text-gray-600 dark:text-gray-400" />
           </div>
-          <div>
+          <div className="flex-1">
             <p className="text-sm text-muted-foreground">Disconnected</p>
             <p className="text-2xl font-bold">{statusCounts.disconnected}</p>
           </div>
@@ -366,7 +366,7 @@ export const AccountManagementPage: React.FC<AccountManagementPageProps> = ({
 
       {/* Main Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2 max-w-md">
+        <TabsList className="grid w-auto grid-cols-2">
           <TabsTrigger value="accounts">Accounts</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
@@ -421,8 +421,8 @@ export const AccountManagementPage: React.FC<AccountManagementPageProps> = ({
           {/* Accounts Display */}
           {isLoading ? (
             <div className={cn(
-              viewMode === 'grid' 
-                ? "grid gap-4 md:grid-cols-2 lg:grid-cols-3"
+              viewMode === 'grid'
+                ? "grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6"
                 : "space-y-4"
             )}>
               {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -442,8 +442,8 @@ export const AccountManagementPage: React.FC<AccountManagementPageProps> = ({
           ) : (
             <ScrollArea className="h-[600px] pr-4">
               <div className={cn(
-                viewMode === 'grid' 
-                  ? "grid gap-4 md:grid-cols-2 lg:grid-cols-3"
+                viewMode === 'grid'
+                  ? "grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6"
                   : "space-y-4"
               )}>
                 {filteredAccounts.map((account) => (

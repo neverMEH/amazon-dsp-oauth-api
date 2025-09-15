@@ -82,10 +82,8 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <ErrorBoundary>
-                        <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 dark:from-slate-900 dark:to-slate-800 p-6">
-                          <div className="max-w-7xl mx-auto">
-                            <AccountManagementPage />
-                          </div>
+                        <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 dark:from-slate-900 dark:to-slate-800 px-4 sm:px-6 lg:px-8 py-6">
+                          <AccountManagementPage />
                         </div>
                       </ErrorBoundary>
                     </ProtectedRoute>
@@ -95,10 +93,8 @@ function App() {
                   path="/settings" 
                   element={
                     <ProtectedRoute>
-                      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 dark:from-slate-900 dark:to-slate-800 p-6">
-                        <div className="max-w-7xl mx-auto">
-                          <SettingsPage />
-                        </div>
+                      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 dark:from-slate-900 dark:to-slate-800 px-4 sm:px-6 lg:px-8 py-6">
+                        <SettingsPage />
                       </div>
                     </ProtectedRoute>
                   } 
@@ -107,7 +103,7 @@ function App() {
                   path="/profile" 
                   element={
                     <ProtectedRoute>
-                      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 dark:from-slate-900 dark:to-slate-800 p-6">
+                      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 dark:from-slate-900 dark:to-slate-800 px-4 sm:px-6 lg:px-8 py-6">
                         <div className="max-w-4xl mx-auto">
                           <h1 className="text-3xl font-bold mb-6">User Profile</h1>
                           <p className="text-muted-foreground">View and edit your profile information.</p>

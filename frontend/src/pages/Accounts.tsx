@@ -211,7 +211,7 @@ const AccountsPage: React.FC = () => {
   }, [checkConnectionStatus]);
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-6">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -277,7 +277,7 @@ const AccountsPage: React.FC = () => {
 
       {/* Main Content Tabs */}
       <Tabs defaultValue="accounts" className="space-y-4">
-        <TabsList className="grid w-full sm:w-auto grid-cols-3 sm:grid-cols-3">
+        <TabsList className="grid w-auto grid-cols-3">
           <TabsTrigger value="accounts">Accounts</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
           <TabsTrigger value="help">Help</TabsTrigger>
@@ -360,7 +360,7 @@ const AccountsPage: React.FC = () => {
                   <Badge variant="secondary">Enabled</Badge>
                 </div>
                 <Separator />
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                   <div>
                     <p className="font-medium">Sync Frequency</p>
                     <p className="text-sm text-muted-foreground">
@@ -370,7 +370,7 @@ const AccountsPage: React.FC = () => {
                   <Badge variant="secondary">Every Hour</Badge>
                 </div>
                 <Separator />
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                   <div>
                     <p className="font-medium">Error Notifications</p>
                     <p className="text-sm text-muted-foreground">

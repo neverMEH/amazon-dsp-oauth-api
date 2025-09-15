@@ -54,7 +54,7 @@ export function DashboardHeader() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center px-4 lg:px-6">
+      <div className="flex h-16 items-center px-4 sm:px-6 lg:px-8">
         {/* Mobile menu button */}
         <Button
           variant="ghost"
@@ -179,7 +179,7 @@ export function DashboardHeader() {
       {/* Mobile Navigation */}
       {!sidebarCollapsed && (
         <div className="lg:hidden border-t bg-background/95 backdrop-blur">
-          <nav className="container flex flex-col space-y-1 p-4">
+          <nav className="flex flex-col space-y-1 px-4 sm:px-6 lg:px-8 py-4">
             {navigationItems.map((item) => {
               const Icon = item.icon
               const isActive = location.pathname === item.href

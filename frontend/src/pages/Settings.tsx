@@ -26,7 +26,7 @@ export const SettingsPage: React.FC = () => {
       </div>
 
       <Tabs defaultValue="general" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4 max-w-2xl">
+        <TabsList className="grid w-full sm:w-auto grid-cols-2 sm:grid-cols-4">
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="accounts">Accounts</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
@@ -34,7 +34,7 @@ export const SettingsPage: React.FC = () => {
         </TabsList>
 
         <TabsContent value="general" className="space-y-4">
-          <Card>
+          <Card className="w-full max-w-4xl">
             <CardHeader>
               <CardTitle>General Preferences</CardTitle>
               <CardDescription>
@@ -78,7 +78,7 @@ export const SettingsPage: React.FC = () => {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="w-full max-w-4xl">
             <CardHeader>
               <CardTitle>Profile Information</CardTitle>
               <CardDescription>
@@ -115,7 +115,7 @@ export const SettingsPage: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="notifications" className="space-y-4">
-          <Card>
+          <Card className="w-full max-w-4xl">
             <CardHeader>
               <CardTitle>Email Notifications</CardTitle>
               <CardDescription>
@@ -159,7 +159,7 @@ export const SettingsPage: React.FC = () => {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="w-full max-w-4xl">
             <CardHeader>
               <CardTitle>In-App Notifications</CardTitle>
               <CardDescription>
@@ -193,7 +193,7 @@ export const SettingsPage: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="security" className="space-y-4">
-          <Card>
+          <Card className="w-full max-w-4xl">
             <CardHeader>
               <CardTitle>Security Settings</CardTitle>
               <CardDescription>
@@ -243,7 +243,7 @@ export const SettingsPage: React.FC = () => {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="w-full max-w-4xl">
             <CardHeader>
               <CardTitle>Session Management</CardTitle>
               <CardDescription>
