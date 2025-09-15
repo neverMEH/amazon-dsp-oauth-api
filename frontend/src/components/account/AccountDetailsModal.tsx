@@ -305,7 +305,7 @@ export const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
                           <TableBody>
                             {account.metadata?.alternate_ids?.length > 0 ? (
                               account.metadata.alternate_ids.map((altId: any, index: number) => (
-                                <TableRow key={altId.countryCode} className="group">
+                                <TableRow key={`${altId.countryCode}-${index}`} className="group">
                                   <TableCell>
                                     <div className="flex items-center gap-2">
                                       <Badge className="font-medium">
@@ -526,8 +526,8 @@ export const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
                       </div>
                     </div>
 
-                    {/* Marketplace Management Table */}
-                    {(account.metadata?.alternate_ids?.length > 0 || account.metadata?.country_codes?.length > 0) && (
+                    {/* Marketplace Management Table - Removed to avoid duplication with Overview tab */}
+                    {false && (account.metadata?.alternate_ids?.length > 0 || account.metadata?.country_codes?.length > 0) && (
                       <div className="space-y-4">
                         <Separator />
                         <div>
