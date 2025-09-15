@@ -55,7 +55,7 @@ interface AccountTableProps {
   className?: string;
 }
 
-type SortField = 'accountName' | 'status' | 'marketplaces' | 'lastRefresh' | 'tokenExpiry';
+type SortField = 'accountName' | 'accountType' | 'status' | 'marketplaces' | 'lastRefresh' | 'tokenExpiry';
 type SortDirection = 'asc' | 'desc';
 
 export const AccountTable: React.FC<AccountTableProps> = ({
@@ -116,6 +116,9 @@ export const AccountTable: React.FC<AccountTableProps> = ({
       switch (sortField) {
         case 'accountName':
           compareValue = (a.accountName || '').localeCompare(b.accountName || '');
+          break;
+        case 'accountType':
+          compareValue = (a.accountType || '').localeCompare(b.accountType || '');
           break;
         case 'status':
           compareValue = (a.status || '').localeCompare(b.status || '');
@@ -223,7 +226,9 @@ export const AccountTable: React.FC<AccountTableProps> = ({
               <TableHead className="min-w-[200px]">
                 <SortButton field="accountName">Account Name</SortButton>
               </TableHead>
-              <TableHead>Type</TableHead>
+              <TableHead>
+                <SortButton field="accountType">Type</SortButton>
+              </TableHead>
               <TableHead className="text-center">
                 <SortButton field="status">Status</SortButton>
               </TableHead>
@@ -275,11 +280,18 @@ export const AccountTable: React.FC<AccountTableProps> = ({
                   </TableCell>
 
                   <TableCell>
-                    <Badge variant="outline" className="font-normal">
-                      {account.profileDetails?.accountInfo?.subType === 'DSP' ||
-                       account.metadata?.account_subtype === 'DSP'
-                        ? 'DSP'
-                        : 'Sponsored'}
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "font-normal",
+                        account.accountType === 'dsp' && "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300",
+                        account.accountType === 'amc' && "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-300",
+                        account.accountType === 'advertising' && "bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300"
+                      )}
+                    >
+                      {account.accountType === 'dsp' ? 'DSP' :
+                       account.accountType === 'amc' ? 'AMC' :
+                       'Advertising'}
                     </Badge>
                   </TableCell>
 

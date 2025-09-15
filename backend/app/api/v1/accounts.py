@@ -13,6 +13,7 @@ from app.middleware.clerk_auth import RequireAuth, get_user_context
 from app.services.account_service import account_service
 from app.services.amazon_oauth_service import amazon_oauth_service
 from app.services.token_service import token_service
+from app.services.dsp_amc_service import dsp_amc_service
 from app.db.base import get_supabase_client, get_supabase_service_client
 from app.core.exceptions import TokenRefreshError, RateLimitError
 from app.models.amazon_account import AmazonAccount
@@ -189,6 +190,298 @@ async def refresh_token_if_needed(user_id: str, token_data: Dict, supabase) -> D
 # ============================================================================
 # API ENDPOINTS
 # ============================================================================
+
+@router.get("/all-account-types")
+async def list_all_account_types(
+    current_user: Dict = Depends(RequireAuth),
+    include_advertising: bool = Query(True, description="Include regular advertising accounts"),
+    include_dsp: bool = Query(True, description="Include DSP advertisers"),
+    include_amc: bool = Query(True, description="Include AMC instances"),
+):
+    """
+    List all Amazon account types (Advertising, DSP, AMC) in a unified response
+
+    **What This Endpoint Does:**
+    - Fetches regular advertising accounts, DSP advertisers, and AMC instances in parallel
+    - Normalizes the data into a consistent format for the frontend
+    - Stores/updates all account types in the database
+
+    **Account Type Differences:**
+    - **Advertising Accounts**: Standard Sponsored Products/Brands/Display accounts
+    - **DSP Advertisers**: Display advertising entities with programmatic capabilities
+    - **AMC Instances**: Analytics instances for advanced data analysis
+
+    **Response Structure:**
+    ```json
+    {
+        "accounts": [
+            {
+                "id": "unique_id",
+                "name": "Account Name",
+                "type": "advertising|dsp|amc",
+                "platform_id": "adsAccountId|advertiserId|instanceId",
+                "status": "active|suspended|provisioning",
+                "metadata": {...}
+            }
+        ],
+        "summary": {
+            "total": 10,
+            "advertising": 5,
+            "dsp": 3,
+            "amc": 2
+        }
+    }
+    ```
+
+    **Required Scopes:**
+    - advertising::account_management (for regular accounts)
+    - advertising::dsp_campaigns (for DSP)
+    - advertising::amc:read (for AMC)
+    """
+    supabase = get_supabase_service_client()
+    user_context = current_user
+    user_id = user_context.get("user_id")
+
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found in database. Please log out and log in again."
+        )
+
+    try:
+        # Get user's token
+        token_data = await get_user_token(user_id, supabase)
+        if not token_data:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="No Amazon account connected. Please connect your Amazon account first."
+            )
+
+        # Refresh token if needed
+        token_data = await refresh_token_if_needed(user_id, token_data, supabase)
+
+        # Fetch all account types in parallel
+        account_data = await dsp_amc_service.list_all_account_types(
+            access_token=token_data["access_token"],
+            include_regular=include_advertising,
+            include_dsp=include_dsp,
+            include_amc=include_amc
+        )
+
+        # Normalize and store all accounts
+        normalized_accounts = []
+
+        # Process advertising accounts
+        for account in account_data.get("advertising_accounts", []):
+            # Check if account exists
+            existing = supabase.table("user_accounts").select("*").eq(
+                "user_id", user_id
+            ).eq(
+                "amazon_account_id", account.get("adsAccountId")
+            ).execute()
+
+            if not existing.data:
+                # Create new account record
+                alternate_ids = account.get("alternateIds", [])
+                first_alternate = alternate_ids[0] if alternate_ids else {}
+
+                status_map = {
+                    "CREATED": "active",
+                    "PARTIALLY_CREATED": "partial",
+                    "PENDING": "pending",
+                    "DISABLED": "suspended"
+                }
+                api_status = account.get("status", "CREATED")
+
+                new_account = AmazonAccount(
+                    user_id=user_id,
+                    account_name=account.get("accountName", "Unknown"),
+                    amazon_account_id=account.get("adsAccountId"),
+                    marketplace_id=first_alternate.get("entityId"),
+                    account_type="advertising",
+                    status=status_map.get(api_status, "active"),
+                    metadata={
+                        "alternate_ids": alternate_ids,
+                        "country_codes": account.get("countryCodes", []),
+                        "errors": account.get("errors", {}),
+                        "profile_id": first_alternate.get("profileId"),
+                        "country_code": first_alternate.get("countryCode"),
+                        "api_status": api_status
+                    }
+                )
+                result = supabase.table("user_accounts").insert(new_account.to_dict()).execute()
+                db_account = result.data[0] if result.data else new_account.to_dict()
+            else:
+                # Update existing account
+                db_account = existing.data[0]
+                supabase.table("user_accounts").update({
+                    "last_synced_at": datetime.now(timezone.utc).isoformat()
+                }).eq("id", db_account["id"]).execute()
+
+            normalized_accounts.append({
+                "id": db_account["id"],
+                "name": account.get("accountName"),
+                "type": "advertising",
+                "platform_id": account.get("adsAccountId"),
+                "status": db_account["status"],
+                "metadata": {
+                    **account,
+                    "db_id": db_account["id"]
+                }
+            })
+
+        # Process DSP advertisers
+        for advertiser in account_data.get("dsp_advertisers", []):
+            # Check if DSP account exists
+            existing = supabase.table("user_accounts").select("*").eq(
+                "user_id", user_id
+            ).eq(
+                "amazon_account_id", advertiser.get("advertiserId")
+            ).execute()
+
+            if not existing.data:
+                # Create new DSP account record
+                status_map = {
+                    "ACTIVE": "active",
+                    "SUSPENDED": "suspended",
+                    "INACTIVE": "inactive"
+                }
+
+                new_account = AmazonAccount(
+                    user_id=user_id,
+                    account_name=advertiser.get("advertiserName", "Unknown DSP"),
+                    amazon_account_id=advertiser.get("advertiserId"),
+                    marketplace_id=advertiser.get("countryCode"),
+                    account_type="dsp",
+                    status=status_map.get(advertiser.get("advertiserStatus", "ACTIVE"), "active"),
+                    metadata={
+                        "advertiser_type": advertiser.get("advertiserType"),
+                        "country_code": advertiser.get("countryCode"),
+                        "currency": advertiser.get("currency"),
+                        "timezone": advertiser.get("timeZone"),
+                        "created_date": advertiser.get("createdDate")
+                    }
+                )
+                result = supabase.table("user_accounts").insert(new_account.to_dict()).execute()
+                db_account = result.data[0] if result.data else new_account.to_dict()
+            else:
+                # Update existing DSP account
+                db_account = existing.data[0]
+                supabase.table("user_accounts").update({
+                    "last_synced_at": datetime.now(timezone.utc).isoformat()
+                }).eq("id", db_account["id"]).execute()
+
+            normalized_accounts.append({
+                "id": db_account["id"],
+                "name": advertiser.get("advertiserName"),
+                "type": "dsp",
+                "platform_id": advertiser.get("advertiserId"),
+                "status": db_account["status"],
+                "metadata": {
+                    **advertiser,
+                    "db_id": db_account["id"]
+                }
+            })
+
+        # Process AMC instances
+        for instance in account_data.get("amc_instances", []):
+            # Check if AMC instance exists
+            existing = supabase.table("user_accounts").select("*").eq(
+                "user_id", user_id
+            ).eq(
+                "amazon_account_id", instance.get("instanceId")
+            ).execute()
+
+            if not existing.data:
+                # Create new AMC instance record
+                status_map = {
+                    "ACTIVE": "active",
+                    "PROVISIONING": "provisioning",
+                    "SUSPENDED": "suspended"
+                }
+
+                # Get first linked advertiser if available
+                linked_advertisers = instance.get("advertisers", [])
+                first_advertiser = linked_advertisers[0] if linked_advertisers else {}
+
+                new_account = AmazonAccount(
+                    user_id=user_id,
+                    account_name=instance.get("instanceName", "Unknown AMC"),
+                    amazon_account_id=instance.get("instanceId"),
+                    marketplace_id=instance.get("region"),
+                    account_type="amc",
+                    status=status_map.get(instance.get("status", "ACTIVE"), "active"),
+                    metadata={
+                        "instance_type": instance.get("instanceType"),
+                        "region": instance.get("region"),
+                        "data_retention_days": instance.get("dataRetentionDays"),
+                        "created_date": instance.get("createdDate"),
+                        "linked_advertisers": linked_advertisers,
+                        "primary_advertiser_id": first_advertiser.get("advertiserId"),
+                        "primary_advertiser_name": first_advertiser.get("advertiserName")
+                    }
+                )
+                result = supabase.table("user_accounts").insert(new_account.to_dict()).execute()
+                db_account = result.data[0] if result.data else new_account.to_dict()
+            else:
+                # Update existing AMC instance
+                db_account = existing.data[0]
+                supabase.table("user_accounts").update({
+                    "last_synced_at": datetime.now(timezone.utc).isoformat()
+                }).eq("id", db_account["id"]).execute()
+
+            normalized_accounts.append({
+                "id": db_account["id"],
+                "name": instance.get("instanceName"),
+                "type": "amc",
+                "platform_id": instance.get("instanceId"),
+                "status": db_account["status"],
+                "metadata": {
+                    **instance,
+                    "db_id": db_account["id"]
+                }
+            })
+
+        # Calculate summary
+        summary = {
+            "total": len(normalized_accounts),
+            "advertising": len([a for a in normalized_accounts if a["type"] == "advertising"]),
+            "dsp": len([a for a in normalized_accounts if a["type"] == "dsp"]),
+            "amc": len([a for a in normalized_accounts if a["type"] == "amc"])
+        }
+
+        logger.info(
+            "Successfully retrieved all account types",
+            user_id=user_id,
+            summary=summary
+        )
+
+        return {
+            "accounts": normalized_accounts,
+            "summary": summary,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+
+    except TokenRefreshError as e:
+        logger.error("Token refresh failed", user_id=user_id, error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token refresh failed. Please re-authenticate with Amazon."
+        )
+    except RateLimitError as e:
+        logger.warning("Rate limit hit", user_id=user_id, retry_after=e.retry_after)
+        return JSONResponse(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            content={"detail": f"Rate limit exceeded. Please retry after {e.retry_after} seconds."},
+            headers={"Retry-After": str(e.retry_after)}
+        )
+    except Exception as e:
+        logger.error("Failed to list all account types", user_id=user_id, error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve accounts: {str(e)}"
+        )
+
 
 @router.get("/amazon-ads-accounts")
 async def list_amazon_ads_accounts(

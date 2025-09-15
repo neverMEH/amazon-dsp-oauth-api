@@ -31,12 +31,13 @@ class AmazonOAuthService:
         self.token_url = settings.amazon_token_url
         self.api_base_url = "https://advertising-api.amazon.com"
         
-        # Required scopes for Amazon DSP Campaign Insights API
+        # Required scopes for Amazon Advertising APIs
         self.scopes = [
             "advertising::campaign_management",
-            "advertising::account_management", 
+            "advertising::account_management",
             "advertising::dsp_campaigns",
-            "advertising::reporting"
+            "advertising::reporting",
+            "advertising::amc:read"  # Added for AMC access
         ]
         self.scope = " ".join(self.scopes)
     

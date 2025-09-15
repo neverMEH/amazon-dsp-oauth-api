@@ -58,9 +58,9 @@ class AccountService {
     return response.json();
   }
 
-  // Get all accounts
+  // Get all accounts (including DSP and AMC)
   async getAccounts(): Promise<AccountsResponse> {
-    const response = await this.fetchWithAuth('/api/v1/accounts');
+    const response = await this.fetchWithAuth('/api/v1/accounts/all-account-types');
 
     // Map backend response to frontend format
     const mappedAccounts = response.accounts?.map((acc: any) => ({
