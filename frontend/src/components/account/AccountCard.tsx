@@ -107,7 +107,15 @@ export const AccountCard: React.FC<AccountCardProps> = ({
             </CardTitle>
             <CardDescription className="text-xs space-y-1">
               <div>ID: {account.accountId || 'N/A'}</div>
-              <div>Type: {account.accountType || 'advertising'}</div>
+              <div className="flex items-center gap-2">
+                <span>Type:</span>
+                <Badge variant="secondary" className="text-xs">
+                  {account.profileDetails?.accountInfo?.subType === 'DSP' ||
+                   account.metadata?.account_subtype === 'DSP'
+                    ? 'DSP'
+                    : 'Sponsored Ads'}
+                </Badge>
+              </div>
             </CardDescription>
           </div>
           
