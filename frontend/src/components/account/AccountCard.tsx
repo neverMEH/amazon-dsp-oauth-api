@@ -172,14 +172,9 @@ export const AccountCard: React.FC<AccountCardProps> = ({
             <Globe className="h-4 w-4" />
             <span>Marketplace</span>
           </div>
-          <div className="flex items-center gap-2">
-            <Badge variant="outline">
-              {account.marketplace?.countryCode || account.metadata?.country_code || 'N/A'}
-            </Badge>
-            <span className="text-xs text-muted-foreground">
-              {account.marketplace?.name || account.marketplaceName || 'Unknown'}
-            </span>
-          </div>
+          <Badge variant="outline">
+            {account.marketplace?.countryCode || account.metadata?.country_code || 'N/A'}
+          </Badge>
         </div>
 
         {/* Last Refresh Time */}
