@@ -307,11 +307,11 @@ const AccountsPage: React.FC = () => {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Countries:</span>
-                    <span className="text-sm">{selectedAccount.countryCodes.join(', ')}</span>
+                    <span className="text-sm">{(selectedAccount.metadata?.countryCodes || selectedAccount.countryCodes || []).join(', ')}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Profiles:</span>
-                    <span className="text-sm">{selectedAccount.alternateIds.length}</span>
+                    <span className="text-sm">{selectedAccount.metadata?.alternateIds?.length || 0}</span>
                   </div>
                   <Separator className="my-2" />
                   <div className="flex gap-2">
