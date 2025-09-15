@@ -71,11 +71,20 @@ python test_auth_status.py
 
 ### Frontend Structure
 - **src/components/** - Reusable React components using shadcn/ui
+  - **account/AccountTable.tsx** - Table view with sortable columns, status indicators, and inline actions
+  - **account/AccountManagementPage.tsx** - Main accounts page (table-only view as of latest update)
 - **src/pages/** - Page components (Dashboard, Settings, Accounts)
 - **src/services/** - API client services
 - **src/stores/** - Zustand state management
 - **src/hooks/** - Custom React hooks
 - **src/types/** - TypeScript type definitions
+
+### Recent UI Updates (2025)
+- **Full-width responsive layouts** - All main screens (Dashboard, Accounts, Settings) now use full viewport width
+- **Enhanced table view** - Professional data table with sorting, visual status indicators, and tooltips
+- **Removed grid/tile view** - Accounts page now uses table-only view for consistency and simplicity
+- **Animated status cards** - Gradient backgrounds with hover effects using framer-motion
+- **Improved information hierarchy** - Better use of colors, icons, and spacing throughout
 
 ### Key Services
 
