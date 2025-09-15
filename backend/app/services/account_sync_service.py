@@ -10,7 +10,6 @@ from uuid import uuid4
 from app.models.amazon_account import AmazonAccount
 from app.services.account_service import account_service
 from app.services.token_service import token_service
-from app.db.base import get_supabase_client
 from app.core.exceptions import TokenRefreshError, RateLimitError
 
 logger = structlog.get_logger()
@@ -62,9 +61,10 @@ class AccountSyncService:
         sync_start = datetime.now(timezone.utc)
 
         try:
-            # Initialize Supabase client if needed
+            # Initialize Supabase client if needed - use service client to bypass RLS
             if not self.supabase:
-                self.supabase = get_supabase_client()
+                from app.db.base import get_supabase_service_client
+                self.supabase = get_supabase_service_client()
 
             # Check if we need to sync (unless forced)
             if not force_update:
@@ -76,11 +76,11 @@ class AccountSyncService:
                         "last_sync": await self._get_last_sync_time(user_id)
                     }
 
-            # Fetch all accounts from Amazon API (with pagination)
-            all_accounts = await self._fetch_all_accounts(access_token)
+            # Fetch ALL account types (SP, DSP, AMC) from Amazon APIs
+            all_accounts = await self._fetch_all_account_types(access_token)
 
-            # Process and store accounts
-            sync_results = await self._process_accounts(user_id, all_accounts)
+            # Process and store all account types
+            sync_results = await self._process_all_account_types(user_id, all_accounts)
 
             # Record sync history
             await self._record_sync_history(
@@ -134,6 +134,45 @@ class AccountSyncService:
             # Clear sync lock
             self._sync_in_progress.pop(user_id, None)
 
+    async def _fetch_all_account_types(self, access_token: str) -> Dict[str, List[Dict]]:
+        """
+        Fetch all account types (SP, DSP, AMC) from Amazon APIs
+
+        Args:
+            access_token: Valid access token
+
+        Returns:
+            Dictionary with lists for each account type
+        """
+        from app.services.dsp_amc_service import dsp_amc_service
+
+        try:
+            # Fetch all account types in parallel
+            account_data = await dsp_amc_service.list_all_account_types(
+                access_token=access_token,
+                include_regular=True,
+                include_dsp=True,
+                include_amc=True
+            )
+
+            logger.info(
+                "Fetched all account types",
+                advertising_count=len(account_data.get("advertising_accounts", [])),
+                dsp_count=len(account_data.get("dsp_advertisers", [])),
+                amc_count=len(account_data.get("amc_instances", []))
+            )
+
+            return account_data
+
+        except Exception as e:
+            logger.error(f"Error fetching account types", error=str(e))
+            # Return structure with empty lists on error
+            return {
+                "advertising_accounts": [],
+                "dsp_advertisers": [],
+                "amc_instances": []
+            }
+
     async def _fetch_all_accounts(self, access_token: str) -> List[Dict]:
         """
         Fetch all accounts from Amazon API with pagination
@@ -186,6 +225,137 @@ class AccountSyncService:
         logger.info(f"Fetched {len(all_accounts)} total accounts across {page_count} pages")
         return all_accounts
 
+    async def _process_all_account_types(
+        self,
+        user_id: str,
+        account_data: Dict[str, List[Dict]]
+    ) -> Dict[str, Any]:
+        """
+        Process and store all account types in database
+
+        Args:
+            user_id: Database user ID
+            account_data: Dictionary with lists for each account type
+
+        Returns:
+            Dictionary with processing statistics
+        """
+        created = 0
+        updated = 0
+        failed = 0
+        errors = []
+        stats_by_type = {
+            "advertising": {"created": 0, "updated": 0, "failed": 0},
+            "dsp": {"created": 0, "updated": 0, "failed": 0},
+            "amc": {"created": 0, "updated": 0, "failed": 0}
+        }
+
+        # Process advertising accounts
+        for account in account_data.get("advertising_accounts", []):
+            try:
+                success, was_created = await self._upsert_advertising_account(user_id, account)
+                if success:
+                    if was_created:
+                        created += 1
+                        stats_by_type["advertising"]["created"] += 1
+                    else:
+                        updated += 1
+                        stats_by_type["advertising"]["updated"] += 1
+                else:
+                    failed += 1
+                    stats_by_type["advertising"]["failed"] += 1
+            except Exception as e:
+                failed += 1
+                stats_by_type["advertising"]["failed"] += 1
+                errors.append({
+                    "account_id": account.get("adsAccountId"),
+                    "type": "advertising",
+                    "error": str(e)
+                })
+                logger.error(
+                    "Failed to process advertising account",
+                    account_id=account.get("adsAccountId"),
+                    error=str(e)
+                )
+
+        # Process DSP advertisers
+        for advertiser in account_data.get("dsp_advertisers", []):
+            try:
+                success, was_created = await self._upsert_dsp_account(user_id, advertiser)
+                if success:
+                    if was_created:
+                        created += 1
+                        stats_by_type["dsp"]["created"] += 1
+                    else:
+                        updated += 1
+                        stats_by_type["dsp"]["updated"] += 1
+                else:
+                    failed += 1
+                    stats_by_type["dsp"]["failed"] += 1
+            except Exception as e:
+                failed += 1
+                stats_by_type["dsp"]["failed"] += 1
+                errors.append({
+                    "account_id": advertiser.get("advertiserId"),
+                    "type": "dsp",
+                    "error": str(e)
+                })
+                logger.error(
+                    "Failed to process DSP advertiser",
+                    advertiser_id=advertiser.get("advertiserId"),
+                    error=str(e)
+                )
+
+        # Process AMC instances
+        for instance in account_data.get("amc_instances", []):
+            try:
+                success, was_created = await self._upsert_amc_instance(user_id, instance)
+                if success:
+                    if was_created:
+                        created += 1
+                        stats_by_type["amc"]["created"] += 1
+                    else:
+                        updated += 1
+                        stats_by_type["amc"]["updated"] += 1
+                else:
+                    failed += 1
+                    stats_by_type["amc"]["failed"] += 1
+            except Exception as e:
+                failed += 1
+                stats_by_type["amc"]["failed"] += 1
+                errors.append({
+                    "account_id": instance.get("instanceId"),
+                    "type": "amc",
+                    "error": str(e)
+                })
+                logger.error(
+                    "Failed to process AMC instance",
+                    instance_id=instance.get("instanceId"),
+                    error=str(e)
+                )
+
+        total = len(account_data.get("advertising_accounts", [])) + \
+                len(account_data.get("dsp_advertisers", [])) + \
+                len(account_data.get("amc_instances", []))
+
+        logger.info(
+            "Processed all account types",
+            total=total,
+            created=created,
+            updated=updated,
+            failed=failed,
+            stats_by_type=stats_by_type
+        )
+
+        return {
+            "total": total,
+            "created": created,
+            "updated": updated,
+            "failed": failed,
+            "errors": errors if errors else None,
+            "stats_by_type": stats_by_type
+        }
+
     async def _process_accounts(
         self,
         user_id: str,
@@ -208,7 +378,7 @@ class AccountSyncService:
 
         for account_data in accounts:
             try:
-                success, was_created = await self._upsert_account(user_id, account_data)
+                success, was_created = await self._upsert_advertising_account(user_id, account_data)
 
                 if success:
                     if was_created:
@@ -238,13 +408,13 @@ class AccountSyncService:
             "errors": errors if errors else None
         }
 
-    async def _upsert_account(
+    async def _upsert_advertising_account(
         self,
         user_id: str,
         account_data: Dict
     ) -> Tuple[bool, bool]:
         """
-        Create or update a single account
+        Create or update a single advertising account
 
         Args:
             user_id: Database user ID
@@ -279,7 +449,7 @@ class AccountSyncService:
             "account_name": account_data.get("accountName", "Unknown"),
             "amazon_account_id": amazon_account_id,
             "marketplace_id": first_alternate.get("entityId"),
-            "account_type": "advertiser",
+            "account_type": "advertising",  # Correctly set to advertising
             "status": status_map.get(api_status, "active"),
             "last_synced_at": datetime.now(timezone.utc).isoformat(),
             "metadata": {
@@ -302,6 +472,148 @@ class AccountSyncService:
         else:
             # Update existing account
             # Preserve existing metadata and merge with new
+            existing_metadata = existing.data[0].get("metadata", {})
+            account_dict["metadata"] = {**existing_metadata, **account_dict["metadata"]}
+
+            result = self.supabase.table("user_accounts").update(
+                account_dict
+            ).eq("id", existing.data[0]["id"]).execute()
+
+            return (bool(result.data), False)
+
+    async def _upsert_dsp_account(
+        self,
+        user_id: str,
+        advertiser_data: Dict
+    ) -> Tuple[bool, bool]:
+        """
+        Create or update a DSP advertiser account
+
+        Args:
+            user_id: Database user ID
+            advertiser_data: DSP advertiser data from API
+
+        Returns:
+            Tuple of (success, was_created)
+        """
+        amazon_account_id = advertiser_data.get("advertiserId")
+
+        # Map DSP status to database status
+        status_map = {
+            "ACTIVE": "active",
+            "SUSPENDED": "suspended",
+            "INACTIVE": "inactive"
+        }
+        api_status = advertiser_data.get("advertiserStatus", "ACTIVE")
+
+        # Check if account exists
+        existing = self.supabase.table("user_accounts").select("*").eq(
+            "user_id", user_id
+        ).eq(
+            "amazon_account_id", amazon_account_id
+        ).execute()
+
+        account_dict = {
+            "user_id": user_id,
+            "account_name": advertiser_data.get("advertiserName", "Unknown DSP"),
+            "amazon_account_id": amazon_account_id,
+            "marketplace_id": advertiser_data.get("countryCode"),
+            "account_type": "dsp",  # Set type to DSP
+            "status": status_map.get(api_status, "active"),
+            "last_synced_at": datetime.now(timezone.utc).isoformat(),
+            "metadata": {
+                "advertiser_type": advertiser_data.get("advertiserType"),
+                "country_code": advertiser_data.get("countryCode"),
+                "currency": advertiser_data.get("currency"),
+                "timezone": advertiser_data.get("timeZone"),
+                "created_date": advertiser_data.get("createdDate"),
+                "api_status": api_status
+            }
+        }
+
+        if not existing.data:
+            # Create new account
+            account_dict["id"] = str(uuid4())
+            account_dict["connected_at"] = datetime.now(timezone.utc).isoformat()
+
+            result = self.supabase.table("user_accounts").insert(account_dict).execute()
+            return (bool(result.data), True)
+        else:
+            # Update existing account
+            existing_metadata = existing.data[0].get("metadata", {})
+            account_dict["metadata"] = {**existing_metadata, **account_dict["metadata"]}
+
+            result = self.supabase.table("user_accounts").update(
+                account_dict
+            ).eq("id", existing.data[0]["id"]).execute()
+
+            return (bool(result.data), False)
+
+    async def _upsert_amc_instance(
+        self,
+        user_id: str,
+        instance_data: Dict
+    ) -> Tuple[bool, bool]:
+        """
+        Create or update an AMC instance account
+
+        Args:
+            user_id: Database user ID
+            instance_data: AMC instance data from API
+
+        Returns:
+            Tuple of (success, was_created)
+        """
+        amazon_account_id = instance_data.get("instanceId")
+
+        # Map AMC status to database status
+        status_map = {
+            "ACTIVE": "active",
+            "PROVISIONING": "provisioning",
+            "SUSPENDED": "suspended"
+        }
+        api_status = instance_data.get("status", "ACTIVE")
+
+        # Get first linked advertiser if available
+        linked_advertisers = instance_data.get("advertisers", [])
+        first_advertiser = linked_advertisers[0] if linked_advertisers else {}
+
+        # Check if account exists
+        existing = self.supabase.table("user_accounts").select("*").eq(
+            "user_id", user_id
+        ).eq(
+            "amazon_account_id", amazon_account_id
+        ).execute()
+
+        account_dict = {
+            "user_id": user_id,
+            "account_name": instance_data.get("instanceName", "Unknown AMC"),
+            "amazon_account_id": amazon_account_id,
+            "marketplace_id": instance_data.get("region"),
+            "account_type": "amc",  # Set type to AMC
+            "status": status_map.get(api_status, "active"),
+            "last_synced_at": datetime.now(timezone.utc).isoformat(),
+            "metadata": {
+                "instance_type": instance_data.get("instanceType"),
+                "region": instance_data.get("region"),
+                "data_retention_days": instance_data.get("dataRetentionDays"),
+                "created_date": instance_data.get("createdDate"),
+                "linked_advertisers": linked_advertisers,
+                "primary_advertiser_id": first_advertiser.get("advertiserId"),
+                "primary_advertiser_name": first_advertiser.get("advertiserName"),
+                "api_status": api_status
+            }
+        }
+
+        if not existing.data:
+            # Create new account
+            account_dict["id"] = str(uuid4())
+            account_dict["connected_at"] = datetime.now(timezone.utc).isoformat()
+
+            result = self.supabase.table("user_accounts").insert(account_dict).execute()
+            return (bool(result.data), True)
+        else:
+            # Update existing account
             existing_metadata = existing.data[0].get("metadata", {})
             account_dict["metadata"] = {**existing_metadata, **account_dict["metadata"]}
 

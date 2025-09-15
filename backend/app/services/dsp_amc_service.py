@@ -81,8 +81,12 @@ class DSPAMCService:
                     raise TokenRefreshError("Access token expired or invalid")
 
                 if response.status_code == 403:
-                    logger.error("Forbidden - insufficient DSP permissions")
-                    return []  # Return empty list if no DSP access
+                    logger.warning(
+                        "User lacks DSP permissions - this is normal for non-DSP accounts",
+                        profile_id=profile_id
+                    )
+                    # Return empty list but indicate it's due to permissions
+                    return []  # User doesn't have DSP access
 
                 if response.status_code == 429:
                     retry_after = response.headers.get("Retry-After", "60")
@@ -173,8 +177,11 @@ class DSPAMCService:
                     raise TokenRefreshError("Access token expired or missing AMC scope")
 
                 if response.status_code == 403:
-                    logger.info("No AMC access - this is normal for most accounts")
-                    return []  # Return empty list if no AMC access
+                    logger.warning(
+                        "User lacks AMC permissions - AMC requires special provisioning"
+                    )
+                    # Return empty list but indicate it's due to permissions
+                    return []  # User doesn't have AMC access
 
                 if response.status_code == 429:
                     retry_after = response.headers.get("Retry-After", "60")
