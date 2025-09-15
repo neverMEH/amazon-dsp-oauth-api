@@ -66,36 +66,36 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
     - [x] Add support for pagination and sorting
     - [x] Include metadata transformation for marketplaces
 
-- [ ] 3. Frontend Navigation and Component Restructure
-  - [ ] 3.1 Write tests for new navigation structure
-    - [ ] Test tab navigation renders correctly
-    - [ ] Test active tab state management
-    - [ ] Test tab switching updates URL and content
-    - [ ] Test responsive behavior on mobile devices
-    - [ ] Test keyboard navigation accessibility
-  - [ ] 3.2 Create tab-based navigation component
-    - [ ] Build `AccountTypeTabs` component with three tabs
-    - [ ] Implement active state management with Zustand
-    - [ ] Add URL synchronization for deep linking
-    - [ ] Style tabs with shadcn/ui components
-  - [ ] 3.3 Update accounts page layout
-    - [ ] Restructure `AccountManagementPage` to use tab layout
-    - [ ] Remove old single-table view
-    - [ ] Add tab content containers for each account type
-    - [ ] Implement responsive grid/table switching
-  - [ ] 3.4 Create reusable account table component
-    - [ ] Build `AccountTypeTable` component accepting account type prop
-    - [ ] Add account type-specific column configurations
-    - [ ] Implement filtering and sorting for each type
-    - [ ] Add type-specific action buttons and status indicators
-  - [ ] 3.5 Update routing and state management
-    - [ ] Add route parameters for account type selection
-    - [ ] Update Zustand store to handle account type state
-    - [ ] Implement URL state synchronization
-  - [ ] 3.6 Verify all frontend tests pass
-    - [ ] Run component tests for new navigation
-    - [ ] Test tab switching functionality
-    - [ ] Test responsive behavior across devices
+- [x] 3. Frontend Navigation and Component Restructure
+  - [x] 3.1 Write tests for new navigation structure
+    - [x] Test tab navigation renders correctly
+    - [x] Test active tab state management
+    - [x] Test tab switching updates URL and content
+    - [x] Test responsive behavior on mobile devices
+    - [x] Test keyboard navigation accessibility
+  - [x] 3.2 Create tab-based navigation component
+    - [x] Build `AccountTypeTabs` component with three tabs
+    - [x] Implement active state management with Zustand
+    - [x] Add URL synchronization for deep linking
+    - [x] Style tabs with shadcn/ui components
+  - [x] 3.3 Update accounts page layout
+    - [x] Restructure `AccountManagementPage` to use tab layout
+    - [x] Remove old single-table view
+    - [x] Add tab content containers for each account type
+    - [x] Implement responsive grid/table switching
+  - [x] 3.4 Create reusable account table component
+    - [x] Build `AccountTypeTable` component accepting account type prop
+    - [x] Add account type-specific column configurations
+    - [x] Implement filtering and sorting for each type
+    - [x] Add type-specific action buttons and status indicators
+  - [x] 3.5 Update routing and state management
+    - [x] Add route parameters for account type selection
+    - [x] Update Zustand store to handle account type state
+    - [x] Implement URL state synchronization
+  - [x] 3.6 Verify all frontend tests pass
+    - [x] Run component tests for new navigation
+    - [x] Test tab switching functionality
+    - [x] Test responsive behavior across devices
 
 - [ ] 4. Account Type-Specific Table Components and Features
   - [ ] 4.1 Write tests for specialized table components

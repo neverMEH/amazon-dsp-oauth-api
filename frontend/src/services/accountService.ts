@@ -72,6 +72,54 @@ class AccountService {
     }
   }
 
+  // Get Sponsored Ads accounts
+  async getSponsoredAdsAccounts(): Promise<any> {
+    try {
+      const response = await this.fetchWithAuth('/api/v1/accounts/sponsored-ads');
+      return {
+        accounts: response.accounts || [],
+        totalCount: response.total_count || response.accounts?.length || 0,
+      };
+    } catch (error) {
+      console.error('Failed to fetch Sponsored Ads accounts:', error);
+      throw error;
+    }
+  }
+
+  // Get DSP accounts
+  async getDSPAccounts(): Promise<any> {
+    try {
+      const response = await this.fetchWithAuth('/api/v1/accounts/dsp');
+      return {
+        accounts: response.accounts || [],
+        totalCount: response.total_count || response.accounts?.length || 0,
+      };
+    } catch (error: any) {
+      // Pass through 403 errors with proper structure
+      if (error.message?.includes('403') || error.response?.status === 403) {
+        throw { response: { status: 403 }, message: 'Access denied' };
+      }
+      throw error;
+    }
+  }
+
+  // Get AMC accounts
+  async getAMCAccounts(): Promise<any> {
+    try {
+      const response = await this.fetchWithAuth('/api/v1/accounts/amc');
+      return {
+        instances: response.instances || [],
+        totalCount: response.total_count || response.instances?.length || 0,
+      };
+    } catch (error: any) {
+      // Pass through 403 errors with proper structure
+      if (error.message?.includes('403') || error.response?.status === 403) {
+        throw { response: { status: 403 }, message: 'Access denied' };
+      }
+      throw error;
+    }
+  }
+
   // Helper method to map backend response to frontend format
   private mapAccountsResponse(response: any): AccountsResponse {
     // Map backend response to frontend format
