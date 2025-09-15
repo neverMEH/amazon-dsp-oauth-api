@@ -163,14 +163,14 @@ export const AccountManagementPage: React.FC<AccountManagementPageProps> = ({
 
   const handleRefreshAll = async () => {
     setIsRefreshing(true);
-    const healthyAccounts = accounts.filter(acc => 
-      acc.status === 'healthy' || acc.status === 'warning'
+    const activeAccounts = accounts.filter(acc =>
+      acc.status === 'active' || acc.status === 'healthy' || acc.status === 'warning'
     );
 
     let successCount = 0;
     let failCount = 0;
 
-    for (const account of healthyAccounts) {
+    for (const account of activeAccounts) {
       try {
         await accountService.refreshAccountToken(account.id);
         successCount++;
@@ -272,14 +272,20 @@ export const AccountManagementPage: React.FC<AccountManagementPageProps> = ({
 
   const getStatusCounts = () => {
     const counts = {
-      healthy: 0,
-      warning: 0,
-      expired: 0,
+      active: 0,
+      error: 0,
       disconnected: 0,
     };
 
     accounts.forEach(account => {
-      counts[account.status]++;
+      // Map old statuses to new ones for backward compatibility
+      let status = account.status;
+      if (status === 'healthy' || status === 'warning') {
+        status = 'active';
+      } else if (status === 'expired') {
+        status = 'error';
+      }
+      counts[status] = (counts[status] || 0) + 1;
     });
 
     return counts;
@@ -330,37 +336,27 @@ export const AccountManagementPage: React.FC<AccountManagementPageProps> = ({
       </div>
 
       {/* Status Overview */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-3">
         <div className="flex items-center gap-3 p-4 border rounded-lg">
           <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-full">
             <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
           </div>
           <div>
-            <p className="text-sm text-muted-foreground">Healthy</p>
-            <p className="text-2xl font-bold">{statusCounts.healthy}</p>
+            <p className="text-sm text-muted-foreground">Active</p>
+            <p className="text-2xl font-bold">{statusCounts.active}</p>
           </div>
         </div>
-        
-        <div className="flex items-center gap-3 p-4 border rounded-lg">
-          <div className="p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-full">
-            <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Warning</p>
-            <p className="text-2xl font-bold">{statusCounts.warning}</p>
-          </div>
-        </div>
-        
+
         <div className="flex items-center gap-3 p-4 border rounded-lg">
           <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-full">
-            <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+            <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
           </div>
           <div>
-            <p className="text-sm text-muted-foreground">Expired</p>
-            <p className="text-2xl font-bold">{statusCounts.expired}</p>
+            <p className="text-sm text-muted-foreground">Needs Attention</p>
+            <p className="text-2xl font-bold">{statusCounts.error}</p>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-3 p-4 border rounded-lg">
           <div className="p-2 bg-gray-100 dark:bg-gray-900/30 rounded-full">
             <CircleOff className="h-5 w-5 text-gray-600 dark:text-gray-400" />
@@ -401,9 +397,8 @@ export const AccountManagementPage: React.FC<AccountManagementPageProps> = ({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="healthy">Healthy</SelectItem>
-                  <SelectItem value="warning">Warning</SelectItem>
-                  <SelectItem value="expired">Expired</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="error">Needs Attention</SelectItem>
                   <SelectItem value="disconnected">Disconnected</SelectItem>
                 </SelectContent>
               </Select>
@@ -472,24 +467,13 @@ export const AccountManagementPage: React.FC<AccountManagementPageProps> = ({
           )}
 
           {/* Quick Actions Alert */}
-          {statusCounts.expired > 0 && (
+          {statusCounts.error > 0 && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Action Required</AlertTitle>
               <AlertDescription>
-                You have {statusCounts.expired} account{statusCounts.expired > 1 ? 's' : ''} with expired tokens. 
-                Please reauthorize to restore access.
-              </AlertDescription>
-            </Alert>
-          )}
-          
-          {statusCounts.warning > 0 && (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Tokens Expiring Soon</AlertTitle>
-              <AlertDescription>
-                {statusCounts.warning} account{statusCounts.warning > 1 ? 's' : ''} will expire within 24 hours. 
-                Consider refreshing or reauthorizing these accounts.
+                You have {statusCounts.error} account{statusCounts.error > 1 ? 's' : ''} that need attention.
+                Auto-refresh has failed for these accounts. Please reauthorize to restore access.
               </AlertDescription>
             </Alert>
           )}

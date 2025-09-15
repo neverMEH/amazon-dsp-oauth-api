@@ -98,18 +98,26 @@ class AccountService {
 
   // Get account status (helper method)
   getAccountStatus(account: Account): AccountStatus {
+    // If no token, account is disconnected
     if (!account.tokenExpiresAt) return 'disconnected';
 
+    // If account has refresh failures or is marked with error status
+    if (account.status === 'error' || account.metadata?.refresh_failures > 2) {
+      return 'error';
+    }
+
+    // If account has valid token (even if expiring soon), it's active
+    // Auto-refresh will handle token renewal
     const now = new Date();
     const expiresAt = new Date(account.tokenExpiresAt);
 
-    if (expiresAt < now) return 'expired';
+    // Only mark as disconnected if token is already expired AND auto-refresh failed
+    if (expiresAt < now && account.metadata?.last_refresh_error) {
+      return 'error';
+    }
 
-    const hoursUntilExpiry = (expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60);
-
-    if (hoursUntilExpiry < 24) return 'warning';
-
-    return 'healthy';
+    // Account is active and being managed
+    return 'active';
   }
 
   // Get account health status

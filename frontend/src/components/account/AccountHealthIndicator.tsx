@@ -23,31 +23,22 @@ interface AccountHealthIndicatorProps {
 }
 
 const statusConfig = {
-  healthy: {
+  active: {
     icon: CheckCircle2,
-    label: 'Healthy',
+    label: 'Active',
     color: 'text-green-600 dark:text-green-400',
     bgColor: 'bg-green-100 dark:bg-green-900/30',
     borderColor: 'border-green-200 dark:border-green-800',
-    description: 'Token is valid and will not expire soon',
+    description: 'Account is active and automatically managed',
     badgeVariant: 'default' as const,
   },
-  warning: {
+  error: {
     icon: AlertCircle,
-    label: 'Expiring Soon',
-    color: 'text-yellow-600 dark:text-yellow-400',
-    bgColor: 'bg-yellow-100 dark:bg-yellow-900/30',
-    borderColor: 'border-yellow-200 dark:border-yellow-800',
-    description: 'Token will expire within 24 hours',
-    badgeVariant: 'secondary' as const,
-  },
-  expired: {
-    icon: XCircle,
-    label: 'Expired',
+    label: 'Needs Attention',
     color: 'text-red-600 dark:text-red-400',
     bgColor: 'bg-red-100 dark:bg-red-900/30',
     borderColor: 'border-red-200 dark:border-red-800',
-    description: 'Token has expired and needs re-authorization',
+    description: 'Auto-refresh failed, please re-authorize',
     badgeVariant: 'destructive' as const,
   },
   disconnected: {
@@ -56,8 +47,36 @@ const statusConfig = {
     color: 'text-gray-500 dark:text-gray-400',
     bgColor: 'bg-gray-100 dark:bg-gray-900/30',
     borderColor: 'border-gray-200 dark:border-gray-800',
-    description: 'Account is not connected',
+    description: 'Account needs to be connected',
     badgeVariant: 'outline' as const,
+  },
+  // Keep old statuses for backward compatibility during transition
+  healthy: {
+    icon: CheckCircle2,
+    label: 'Active',
+    color: 'text-green-600 dark:text-green-400',
+    bgColor: 'bg-green-100 dark:bg-green-900/30',
+    borderColor: 'border-green-200 dark:border-green-800',
+    description: 'Account is active and automatically managed',
+    badgeVariant: 'default' as const,
+  },
+  warning: {
+    icon: CheckCircle2,
+    label: 'Active',
+    color: 'text-green-600 dark:text-green-400',
+    bgColor: 'bg-green-100 dark:bg-green-900/30',
+    borderColor: 'border-green-200 dark:border-green-800',
+    description: 'Account is active and automatically managed',
+    badgeVariant: 'default' as const,
+  },
+  expired: {
+    icon: AlertCircle,
+    label: 'Needs Attention',
+    color: 'text-red-600 dark:text-red-400',
+    bgColor: 'bg-red-100 dark:bg-red-900/30',
+    borderColor: 'border-red-200 dark:border-red-800',
+    description: 'Auto-refresh failed, please re-authorize',
+    badgeVariant: 'destructive' as const,
   },
 };
 

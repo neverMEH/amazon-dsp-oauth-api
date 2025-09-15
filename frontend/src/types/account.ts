@@ -1,6 +1,6 @@
 // Account management types
 
-export type AccountStatus = 'healthy' | 'warning' | 'expired' | 'disconnected';
+export type AccountStatus = 'active' | 'error' | 'disconnected';
 
 export interface Marketplace {
   id: string;
