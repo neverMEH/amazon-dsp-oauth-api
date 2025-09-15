@@ -71,16 +71,16 @@ export const AmazonAccountsList: React.FC<AmazonAccountsListProps> = ({
       'PENDING': 'pending'
     };
 
-    const primaryProfile = account.metadata.alternateIds?.[0];
-    const errorCountries = account.metadata.errors ? Object.keys(account.metadata.errors) : [];
+    const primaryProfile = account.metadata?.alternateIds?.[0];
+    const errorCountries = account.metadata?.errors ? Object.keys(account.metadata.errors) : [];
 
     return {
       id: account.id,
       name: account.accountName,
       amazonId: account.adsAccountId,
       status: statusMap[account.status] || 'pending',
-      countries: account.countryCodes || [],
-      profileCount: account.alternateIds?.length || 0,
+      countries: account.metadata?.countryCodes || account.countryCodes || [],
+      profileCount: account.metadata?.alternateIds?.length || 0,
       hasErrors: errorCountries.length > 0,
       errorCountries: errorCountries.length > 0 ? errorCountries : undefined,
       primaryProfile: primaryProfile ? {

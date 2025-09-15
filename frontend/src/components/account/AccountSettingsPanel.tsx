@@ -30,7 +30,8 @@ import {
   Check,
   Grid3x3,
   List,
-  Star
+  Star,
+  AlertTriangle
 } from 'lucide-react';
 import { AccountSettings, Account, UpdateSettingsRequest } from '@/types/account';
 import { accountService } from '@/services/accountService';
@@ -355,7 +356,7 @@ export const AccountSettingsPanel: React.FC<AccountSettingsPanelProps> = ({
           <div className="flex items-center justify-between space-x-4">
             <div className="flex-1 space-y-1">
               <Label htmlFor="email-issues" className="flex items-center gap-2">
-                <AlertDescription className="h-4 w-4" />
+                <AlertTriangle className="h-4 w-4" />
                 Connection Issues
               </Label>
               <p className="text-sm text-muted-foreground">
