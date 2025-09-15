@@ -369,44 +369,53 @@ export const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
                                 </TableRow>
                               ))
                             ) : account.metadata?.country_codes?.length > 0 ? (
-                              account.metadata.country_codes.map((code: string, index: number) => (
-                                <TableRow key={code} className="group">
-                                  <TableCell>
-                                    <Badge className="font-medium">
-                                      {code}
-                                    </Badge>
-                                  </TableCell>
-                                  <TableCell>
+                              // If we have country_codes but no alternate_ids, show them in a single row
+                              <TableRow className="group">
+                                <TableCell>
+                                  <div className="flex flex-wrap gap-1">
+                                    {account.metadata.country_codes.map((code: string) => (
+                                      <Badge key={code} className="font-medium">
+                                        {code}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-2">
                                     <code className="relative rounded bg-muted px-2 py-1 font-mono text-sm">
-                                      {account.profileDetails?.profileId || 'N/A'}
+                                      {account.profileDetails?.profileId || account.accountId || 'N/A'}
                                     </code>
-                                  </TableCell>
-                                  <TableCell>
+                                    <span className="text-xs text-muted-foreground">(Shared)</span>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-2">
                                     <code className="relative rounded bg-muted px-2 py-1 font-mono text-sm">
                                       {account.accountId || 'N/A'}
                                     </code>
-                                  </TableCell>
-                                  <TableCell className="text-right">
-                                    <div className="flex items-center justify-end gap-1">
-                                      <TooltipProvider>
-                                        <Tooltip>
-                                          <TooltipTrigger asChild>
-                                            <Button
-                                              variant="ghost"
-                                              size="icon"
-                                              className="h-8 w-8"
-                                              disabled
-                                            >
-                                              <ExternalLink className="h-4 w-4" />
-                                            </Button>
-                                          </TooltipTrigger>
-                                          <TooltipContent>View in Amazon Ads (Coming Soon)</TooltipContent>
-                                        </Tooltip>
-                                      </TooltipProvider>
-                                    </div>
-                                  </TableCell>
-                                </TableRow>
-                              ))
+                                    <span className="text-xs text-muted-foreground">(Shared)</span>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <div className="flex items-center justify-end gap-1">
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8"
+                                            disabled
+                                          >
+                                            <ExternalLink className="h-4 w-4" />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>View in Amazon Ads (Coming Soon)</TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
                             ) : (
                               <TableRow className="group">
                                 <TableCell>
