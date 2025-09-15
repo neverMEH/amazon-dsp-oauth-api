@@ -133,6 +133,7 @@ class AccountService {
   async reauthorizeAccount(accountId: string): Promise<ReauthorizeResponse> {
     return this.fetchWithAuth(`/api/v1/accounts/${accountId}/reauthorize`, {
       method: 'POST',
+      body: JSON.stringify({ force_refresh: false }),
     });
   }
 
@@ -295,9 +296,14 @@ class AccountService {
 
   // Refresh account token
   async refreshAccountToken(accountId: string): Promise<Account> {
-    return this.fetchWithAuth(`/api/v1/accounts/${accountId}/refresh`, {
+    // Use reauthorize endpoint with non-force refresh
+    const response = await this.fetchWithAuth(`/api/v1/accounts/${accountId}/reauthorize`, {
       method: 'POST',
+      body: JSON.stringify({ force_refresh: true }),
     });
+
+    // Return the account data after refresh
+    return this.getAccountDetails(accountId);
   }
 
   // Bulk refresh tokens
