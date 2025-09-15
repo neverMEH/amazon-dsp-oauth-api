@@ -310,23 +310,32 @@ export const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
                           </TableHeader>
                           <TableBody>
                             {account.metadata?.alternate_ids?.length > 0 ? (
-                              // Group alternate_ids by countryCode to avoid duplicates
+                              // Group and merge alternate_ids by countryCode to combine profileId and entityId
                               (() => {
                                 const marketplaceMap = new Map<string, any>();
                                 account.metadata.alternate_ids.forEach((altId: any) => {
-                                  // Only keep the first occurrence of each country code
-                                  // This prioritizes entries with profileId over those with just entityId
-                                  if (!marketplaceMap.has(altId.countryCode)) {
-                                    marketplaceMap.set(altId.countryCode, altId);
+                                  const country = altId.countryCode;
+                                  if (!marketplaceMap.has(country)) {
+                                    marketplaceMap.set(country, {
+                                      countryCode: country,
+                                      profileId: altId.profileId || null,
+                                      entityId: altId.entityId || null
+                                    });
                                   } else {
-                                    // If existing entry doesn't have profileId but new one does, replace it
-                                    const existing = marketplaceMap.get(altId.countryCode);
-                                    if (!existing.profileId && altId.profileId) {
-                                      marketplaceMap.set(altId.countryCode, altId);
+                                    // Merge the data - combine profileId and entityId
+                                    const existing = marketplaceMap.get(country);
+                                    if (altId.profileId) {
+                                      existing.profileId = altId.profileId;
+                                    }
+                                    if (altId.entityId) {
+                                      existing.entityId = altId.entityId;
                                     }
                                   }
                                 });
-                                return Array.from(marketplaceMap.values());
+                                // Sort by country code for consistent display
+                                return Array.from(marketplaceMap.values()).sort((a, b) =>
+                                  a.countryCode.localeCompare(b.countryCode)
+                                );
                               })().map((altId: any) => (
                                 <TableRow key={altId.countryCode} className="group">
                                   <TableCell>
@@ -366,9 +375,33 @@ export const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
                                     </div>
                                   </TableCell>
                                   <TableCell>
-                                    <code className="relative rounded bg-muted px-2 py-1 font-mono text-sm">
-                                      {altId.entityId || 'N/A'}
-                                    </code>
+                                    <div className="flex items-center gap-2">
+                                      <code className="relative rounded bg-muted px-2 py-1 font-mono text-sm">
+                                        {altId.entityId || 'N/A'}
+                                      </code>
+                                      {altId.entityId && (
+                                        <TooltipProvider>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                onClick={() => {
+                                                  navigator.clipboard.writeText(altId.entityId);
+                                                  toast({
+                                                    description: "Entity ID copied to clipboard",
+                                                  });
+                                                }}
+                                              >
+                                                <Copy className="h-3.5 w-3.5" />
+                                              </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>Copy Entity ID</TooltipContent>
+                                          </Tooltip>
+                                        </TooltipProvider>
+                                      )}
+                                    </div>
                                   </TableCell>
                                   <TableCell className="text-right">
                                     <div className="flex items-center justify-end gap-1">
