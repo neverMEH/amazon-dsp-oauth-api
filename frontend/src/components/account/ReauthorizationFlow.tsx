@@ -188,7 +188,7 @@ export const ReauthorizationFlow: React.FC<ReauthorizationFlowProps> = ({
             Reauthorize Account
           </DialogTitle>
           <DialogDescription>
-            {account.accountName} - {account.marketplace.name}
+            {account.accountName} - {account.marketplace?.name || account.marketplaceName || 'Unknown'}
           </DialogDescription>
         </DialogHeader>
 

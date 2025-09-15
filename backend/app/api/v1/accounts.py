@@ -543,11 +543,19 @@ async def list_accounts(
         
         result = query.execute()
         
+        # Get token info for the user to determine account status
+        token_data = await get_user_token(user_id, supabase)
+        token_expires_at = None
+        if token_data:
+            token_expires_at = token_data.get("expires_at")
+
         accounts = []
         for acc in result.data:
             account_dict = AmazonAccount.from_dict(acc).to_dict()
             # Add marketplace name
             account_dict["marketplace_name"] = AmazonAccount.from_dict(acc).marketplace_name
+            # Add token expiry info for status determination
+            account_dict["token_expires_at"] = token_expires_at
             accounts.append(account_dict)
         
         return AccountListResponse(

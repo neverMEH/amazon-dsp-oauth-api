@@ -103,10 +103,11 @@ export const AccountCard: React.FC<AccountCardProps> = ({
           <div className="space-y-1 flex-1">
             <CardTitle className="text-lg flex items-center gap-2">
               <User className="h-4 w-4" />
-              {account.accountName}
+              {account.accountName || 'Unknown Account'}
             </CardTitle>
-            <CardDescription className="text-xs">
-              ID: {account.accountId}
+            <CardDescription className="text-xs space-y-1">
+              <div>ID: {account.accountId || 'N/A'}</div>
+              <div>Type: {account.accountType || 'advertising'}</div>
             </CardDescription>
           </div>
           
@@ -173,10 +174,10 @@ export const AccountCard: React.FC<AccountCardProps> = ({
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="outline">
-              {account.marketplace?.countryCode || 'N/A'}
+              {account.marketplace?.countryCode || account.metadata?.country_code || 'N/A'}
             </Badge>
             <span className="text-xs text-muted-foreground">
-              {account.marketplace?.name || 'Unknown'}
+              {account.marketplace?.name || account.marketplaceName || 'Unknown'}
             </span>
           </div>
         </div>

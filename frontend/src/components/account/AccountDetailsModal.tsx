@@ -127,10 +127,11 @@ export const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <User className="h-5 w-5" />
-            {account.accountName}
+            {account.accountName || 'Unknown Account'}
           </DialogTitle>
-          <DialogDescription>
-            Account ID: {account.accountId}
+          <DialogDescription className="space-y-1">
+            <div>Account ID: {account.accountId || 'N/A'}</div>
+            <div>Type: {account.accountType || 'advertising'}</div>
           </DialogDescription>
         </DialogHeader>
 
@@ -192,8 +193,8 @@ export const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
                     Marketplace
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge variant="outline">{account.marketplace?.countryCode || 'N/A'}</Badge>
-                    <span className="text-sm">{account.marketplace?.name || 'Unknown'}</span>
+                    <Badge variant="outline">{account.marketplace?.countryCode || account.metadata?.country_code || 'N/A'}</Badge>
+                    <span className="text-sm">{account.marketplace?.name || account.marketplaceName || 'Unknown'}</span>
                   </div>
                 </div>
 
@@ -203,7 +204,7 @@ export const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
                     <MapPin className="h-3 w-3" />
                     Region
                   </div>
-                  <span className="text-sm">{account.marketplace.region}</span>
+                  <span className="text-sm">{account.marketplace?.region || account.metadata?.region || 'Unknown'}</span>
                 </div>
 
                 {/* Last Refresh */}

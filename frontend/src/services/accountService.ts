@@ -60,7 +60,35 @@ class AccountService {
 
   // Get all accounts
   async getAccounts(): Promise<AccountsResponse> {
-    return this.fetchWithAuth('/api/v1/accounts');
+    const response = await this.fetchWithAuth('/api/v1/accounts');
+
+    // Map backend response to frontend format
+    const mappedAccounts = response.accounts?.map((acc: any) => ({
+      id: acc.id,
+      accountName: acc.account_name || acc.accountName || 'Unknown Account',
+      accountId: acc.amazon_account_id || acc.accountId || acc.id,
+      accountType: acc.account_type || acc.accountType || 'advertising',
+      marketplaceId: acc.marketplace_id || acc.marketplaceId,
+      marketplaceName: acc.marketplace_name || acc.marketplaceName,
+      marketplace: acc.marketplace || (acc.marketplace_id ? {
+        id: acc.marketplace_id,
+        name: acc.marketplace_name || 'Unknown',
+        countryCode: acc.metadata?.country_code || 'N/A',
+        region: acc.metadata?.region || 'Unknown'
+      } : undefined),
+      status: acc.status || 'disconnected',
+      tokenExpiresAt: acc.token_expires_at || acc.tokenExpiresAt || null,
+      lastRefreshTime: acc.last_synced_at || acc.lastRefreshTime || null,
+      createdAt: acc.connected_at || acc.createdAt || acc.created_at,
+      updatedAt: acc.updated_at || acc.updatedAt || acc.last_synced_at,
+      isDefault: acc.is_default || acc.isDefault || false,
+      metadata: acc.metadata || {}
+    })) || [];
+
+    return {
+      accounts: mappedAccounts,
+      total: response.total || mappedAccounts.length
+    };
   }
 
   // Get account details
@@ -299,7 +327,34 @@ class AccountService {
 
   // Sync accounts from Amazon Ads API
   async syncAmazonAccounts(): Promise<any> {
-    return this.fetchWithAuth('/api/v1/accounts/amazon-ads-accounts');
+    const response = await this.fetchWithAuth('/api/v1/accounts/amazon-ads-accounts');
+
+    // The Amazon API returns accounts in the response
+    if (response.accounts) {
+      // Map Amazon API response to our format
+      const mappedAccounts = response.accounts.map((acc: any) => ({
+        accountName: acc.accountName || acc.account_name || 'Unknown Account',
+        accountId: acc.adsAccountId || acc.accountId || acc.id,
+        accountType: 'advertising',
+        status: acc.status === 'CREATED' ? 'active' :
+                acc.status === 'DISABLED' ? 'disconnected' :
+                acc.status === 'PARTIALLY_CREATED' ? 'warning' :
+                acc.status === 'PENDING' ? 'warning' : 'disconnected',
+        metadata: {
+          alternate_ids: acc.alternateIds || [],
+          country_codes: acc.countryCodes || [],
+          errors: acc.errors || {},
+          api_status: acc.status
+        }
+      }));
+
+      return {
+        ...response,
+        accounts: mappedAccounts
+      };
+    }
+
+    return response;
   }
 }
 

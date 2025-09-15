@@ -13,14 +13,18 @@ export interface Account {
   id: string;
   accountName: string;
   accountId: string;
-  marketplace: Marketplace;
+  accountType: string;
+  marketplace?: Marketplace;
+  marketplaceId?: string;
+  marketplaceName?: string;
   status: AccountStatus;
-  tokenExpiresAt: string | null;
-  lastRefreshTime: string | null;
+  tokenExpiresAt?: string | null;
+  lastRefreshTime?: string | null;
   createdAt: string;
   updatedAt: string;
   isDefault?: boolean;
   profileDetails?: ProfileDetails;
+  metadata?: any;
 }
 
 export interface ProfileDetails {
