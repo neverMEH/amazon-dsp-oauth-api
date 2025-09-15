@@ -287,8 +287,14 @@ export const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
                           </TooltipProvider>
                         </div>
                         <Badge variant="secondary" className="text-xs">
-                          {account.metadata?.alternate_ids?.length ||
-                           account.metadata?.country_codes?.length || 1} Marketplace(s)
+                          {(() => {
+                            if (account.metadata?.alternate_ids?.length > 0) {
+                              // Count unique country codes
+                              const uniqueCountries = new Set(account.metadata.alternate_ids.map((altId: any) => altId.countryCode));
+                              return uniqueCountries.size;
+                            }
+                            return account.metadata?.country_codes?.length || 1;
+                          })()} Marketplace(s)
                         </Badge>
                       </div>
 
@@ -304,8 +310,25 @@ export const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
                           </TableHeader>
                           <TableBody>
                             {account.metadata?.alternate_ids?.length > 0 ? (
-                              account.metadata.alternate_ids.map((altId: any, index: number) => (
-                                <TableRow key={`${altId.countryCode}-${index}`} className="group">
+                              // Group alternate_ids by countryCode to avoid duplicates
+                              (() => {
+                                const marketplaceMap = new Map<string, any>();
+                                account.metadata.alternate_ids.forEach((altId: any) => {
+                                  // Only keep the first occurrence of each country code
+                                  // This prioritizes entries with profileId over those with just entityId
+                                  if (!marketplaceMap.has(altId.countryCode)) {
+                                    marketplaceMap.set(altId.countryCode, altId);
+                                  } else {
+                                    // If existing entry doesn't have profileId but new one does, replace it
+                                    const existing = marketplaceMap.get(altId.countryCode);
+                                    if (!existing.profileId && altId.profileId) {
+                                      marketplaceMap.set(altId.countryCode, altId);
+                                    }
+                                  }
+                                });
+                                return Array.from(marketplaceMap.values());
+                              })().map((altId: any) => (
+                                <TableRow key={altId.countryCode} className="group">
                                   <TableCell>
                                     <div className="flex items-center gap-2">
                                       <Badge className="font-medium">

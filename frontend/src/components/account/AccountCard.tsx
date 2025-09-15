@@ -181,9 +181,14 @@ export const AccountCard: React.FC<AccountCardProps> = ({
             <span>Marketplaces</span>
           </div>
           <Badge variant="secondary" className="font-semibold">
-            {account.metadata?.alternate_ids?.length ||
-             account.metadata?.country_codes?.length ||
-             (account.marketplace?.countryCode ? 1 : 0)}
+            {(() => {
+              if (account.metadata?.alternate_ids?.length > 0) {
+                // Count unique country codes
+                const uniqueCountries = new Set(account.metadata.alternate_ids.map((altId: any) => altId.countryCode));
+                return uniqueCountries.size;
+              }
+              return account.metadata?.country_codes?.length || (account.marketplace?.countryCode ? 1 : 0);
+            })()}
           </Badge>
         </div>
 
