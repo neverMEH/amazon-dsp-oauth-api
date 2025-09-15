@@ -115,15 +115,48 @@ export function AccountSwitcher({ className }: AccountSwitcherProps) {
 
   const formatLastSync = (dateString?: string): string => {
     if (!dateString) return 'Never synced'
-    
+
     const date = new Date(dateString)
     const now = new Date()
     const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60))
-    
+
     if (diffInHours < 1) return 'Just synced'
     if (diffInHours < 24) return `${diffInHours}h ago`
     if (diffInHours < 168) return `${Math.floor(diffInHours / 24)}d ago`
     return date.toLocaleDateString()
+  }
+
+  const handleConnectAccount = async () => {
+    console.log('🔍 Connect Account button clicked from AccountSwitcher!');
+    try {
+      console.log('🔍 Making request to /api/v1/auth/amazon/login...');
+      const response = await fetch('/api/v1/auth/amazon/login');
+
+      console.log('🔍 Response status:', response.status);
+      console.log('🔍 Response ok:', response.ok);
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('🔍 Response data:', data);
+        console.log('🔍 Redirecting to:', data.auth_url);
+        window.location.href = data.auth_url;
+      } else {
+        const errorData = await response.text();
+        console.error('🔍 Response error:', errorData);
+        toast({
+          variant: 'destructive',
+          title: 'Connection Failed',
+          description: 'Unable to connect to Amazon. Please try again.',
+        });
+      }
+    } catch (error) {
+      console.error('🔍 Connect failed:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Connection Failed',
+        description: 'Unable to connect to Amazon. Please try again.',
+      });
+    }
   }
 
   if (isLoading) {
@@ -136,7 +169,11 @@ export function AccountSwitcher({ className }: AccountSwitcherProps) {
 
   if (accounts.length === 0) {
     return (
-      <Button variant="outline" className={cn('w-64 justify-start', className)}>
+      <Button
+        variant="outline"
+        className={cn('w-64 justify-start', className)}
+        onClick={handleConnectAccount}
+      >
         <Plus className="mr-2 h-4 w-4" />
         Connect Account
       </Button>
@@ -226,7 +263,7 @@ export function AccountSwitcher({ className }: AccountSwitcherProps) {
           ))}
         </div>
         <DropdownMenuSeparator />
-        <DropdownMenuItem className="p-3">
+        <DropdownMenuItem className="p-3" onClick={handleConnectAccount}>
           <Plus className="mr-2 h-4 w-4" />
           Connect New Account
         </DropdownMenuItem>
