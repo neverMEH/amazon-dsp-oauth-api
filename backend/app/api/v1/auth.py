@@ -20,7 +20,7 @@ from app.services.account_service import account_service
 from app.services.amazon_oauth_service import amazon_oauth_service
 from app.services.user_service import UserService
 from app.services.dsp_amc_service import DSPAMCService
-from app.middleware.clerk_auth import RequireAuth, get_user_context
+from app.middleware.clerk_auth import RequireAuth, OptionalAuth, get_user_context
 from app.schemas.auth import (
     LoginResponse,
     CallbackResponse,
@@ -102,7 +102,8 @@ async def callback(
     code: Optional[str] = Query(None, description="Authorization code"),
     state: str = Query(..., description="State token"),
     error: Optional[str] = Query(None, description="Error code"),
-    error_description: Optional[str] = Query(None, description="Error description")
+    error_description: Optional[str] = Query(None, description="Error description"),
+    current_user: Optional[Dict[str, Any]] = Depends(OptionalAuth)
 ):
     """
     Handle OAuth callback from Amazon
@@ -164,9 +165,31 @@ async def callback(
                           dsp_count=len(account_data.get("dsp_advertisers", [])),
                           amc_count=len(account_data.get("amc_instances", [])))
 
-                # TODO: Create user and account records
-                # For now, just log the successful fetch
-                # We'll need to implement user association logic
+                # Handle user context if available
+                user_context = None
+                clerk_user_id = None
+
+                if current_user:
+                    try:
+                        user_context = get_user_context(current_user)
+                        clerk_user_id = user_context.get("clerk_user_id")
+                        logger.info("OAuth callback with authenticated user",
+                                  clerk_user_id=clerk_user_id[:8] + "..." if clerk_user_id else None)
+                    except Exception as e:
+                        logger.warning("Failed to get user context", error=str(e))
+
+                # TODO: Create user and account records with proper user association
+                # If clerk_user_id is available, associate the tokens and accounts with that user
+                # If not, we may need to handle this case differently (e.g., store temporarily)
+
+                if clerk_user_id:
+                    logger.info("User authenticated - ready to associate Amazon accounts with user")
+                    # TODO: Implementation needed:
+                    # 1. Update stored_token to include user_id
+                    # 2. Create account records for each fetched account
+                    # 3. Associate accounts with the user
+                else:
+                    logger.warning("No user context available - Amazon accounts fetched but not associated")
 
         except Exception as e:
             # Don't fail the OAuth flow if account fetching fails
