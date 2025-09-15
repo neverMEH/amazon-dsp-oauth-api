@@ -77,15 +77,17 @@ function App() {
                     </ProtectedRoute>
                   } 
                 />
-                <Route 
-                  path="/accounts" 
+                <Route
+                  path="/accounts"
                   element={
                     <ProtectedRoute>
-                      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 dark:from-slate-900 dark:to-slate-800 p-6">
-                        <div className="max-w-7xl mx-auto">
-                          <AccountManagementPage />
+                      <ErrorBoundary>
+                        <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 dark:from-slate-900 dark:to-slate-800 p-6">
+                          <div className="max-w-7xl mx-auto">
+                            <AccountManagementPage />
+                          </div>
                         </div>
-                      </div>
+                      </ErrorBoundary>
                     </ProtectedRoute>
                   } 
                 />
