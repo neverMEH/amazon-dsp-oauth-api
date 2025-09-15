@@ -178,21 +178,12 @@ export const AccountCard: React.FC<AccountCardProps> = ({
         <div className="flex items-center justify-between text-sm">
           <div className="flex items-center gap-2 text-muted-foreground">
             <Globe className="h-4 w-4" />
-            <span>Marketplace{account.metadata?.country_codes?.length > 1 ? 's' : ''}</span>
+            <span>Marketplaces</span>
           </div>
-          <div className="flex flex-wrap gap-1 justify-end">
-            {account.metadata?.country_codes?.length > 0 ? (
-              account.metadata.country_codes.map((code: string) => (
-                <Badge key={code} variant="outline" className="text-xs">
-                  {code}
-                </Badge>
-              ))
-            ) : (
-              <Badge variant="outline">
-                {account.marketplace?.countryCode || account.metadata?.country_code || 'N/A'}
-              </Badge>
-            )}
-          </div>
+          <Badge variant="secondary" className="font-semibold">
+            {account.metadata?.country_codes?.length ||
+             (account.marketplace?.countryCode ? 1 : 0)}
+          </Badge>
         </div>
 
         {/* Last Refresh Time */}

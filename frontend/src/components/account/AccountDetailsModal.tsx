@@ -29,9 +29,22 @@ import {
   MapPin,
   DollarSign,
   Building,
-  HelpCircle
+  HelpCircle,
+  ExternalLink,
+  BarChart,
+  ToggleLeft,
+  ToggleRight
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Switch } from '@/components/ui/switch';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Account, RefreshHistory, AccountDetailsResponse } from '@/types/account';
 import { AccountHealthIndicator } from './AccountHealthIndicator';
 import { accountService } from '@/services/accountService';
@@ -308,48 +321,165 @@ export const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Marketplace-specific IDs */}
-                  {account.metadata?.alternate_ids?.length > 0 && (
+                  {/* Marketplace Management Table */}
+                  {(account.metadata?.alternate_ids?.length > 0 || account.metadata?.country_codes?.length > 0) && (
                     <>
                       <Separator />
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <h4 className="text-sm font-semibold">Marketplace-Specific IDs</h4>
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <HelpCircle className="h-3 w-3 text-muted-foreground cursor-help" />
-                              </TooltipTrigger>
-                              <TooltipContent side="right" className="max-w-xs">
-                                <p className="text-xs">
-                                  Each marketplace has unique Profile and Entity IDs. Use the appropriate Profile ID
-                                  when making API calls to a specific marketplace.
-                                </p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-sm font-semibold">Marketplace Management</h4>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <HelpCircle className="h-3 w-3 text-muted-foreground cursor-help" />
+                                </TooltipTrigger>
+                                <TooltipContent side="right" className="max-w-xs">
+                                  <p className="text-xs">
+                                    Manage each marketplace individually. Toggle sync to enable/disable data collection
+                                    for specific marketplaces.
+                                  </p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </div>
                         </div>
-                        <div className="space-y-3">
-                          {account.metadata.alternate_ids.map((altId: any) => (
-                            <div key={altId.countryCode} className="p-3 border rounded-lg space-y-2">
-                              <div className="flex items-center gap-2">
-                                <Globe className="h-4 w-4 text-muted-foreground" />
-                                <Badge variant="outline" className="font-semibold">
-                                  {altId.countryCode}
-                                </Badge>
-                              </div>
-                              <div className="grid grid-cols-2 gap-4 ml-6">
-                                <div className="space-y-1">
-                                  <div className="text-xs text-muted-foreground">Profile ID</div>
-                                  <span className="text-sm font-mono">{altId.profileId || 'N/A'}</span>
-                                </div>
-                                <div className="space-y-1">
-                                  <div className="text-xs text-muted-foreground">Entity ID</div>
-                                  <span className="text-sm font-mono">{altId.entityId || 'N/A'}</span>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
+
+                        <div className="border rounded-lg">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="w-[100px]">Marketplace</TableHead>
+                                <TableHead>Profile ID</TableHead>
+                                <TableHead>Entity ID</TableHead>
+                                <TableHead className="text-center">Sync</TableHead>
+                                <TableHead className="text-center">Actions</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {account.metadata?.alternate_ids?.length > 0 ? (
+                                account.metadata.alternate_ids.map((altId: any) => (
+                                  <TableRow key={altId.countryCode}>
+                                    <TableCell>
+                                      <Badge variant="outline" className="font-semibold">
+                                        {altId.countryCode}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell className="font-mono text-sm">
+                                      {altId.profileId || 'N/A'}
+                                    </TableCell>
+                                    <TableCell className="font-mono text-sm">
+                                      {altId.entityId || 'N/A'}
+                                    </TableCell>
+                                    <TableCell className="text-center">
+                                      <Switch
+                                        defaultChecked={true}
+                                        disabled
+                                        aria-label={`Sync ${altId.countryCode} marketplace`}
+                                      />
+                                    </TableCell>
+                                    <TableCell>
+                                      <div className="flex items-center justify-center gap-1">
+                                        <TooltipProvider>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8"
+                                                disabled
+                                              >
+                                                <BarChart className="h-4 w-4" />
+                                              </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                              <p className="text-xs">View Dashboard (Coming Soon)</p>
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        </TooltipProvider>
+                                        <TooltipProvider>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8"
+                                                disabled
+                                              >
+                                                <ExternalLink className="h-4 w-4" />
+                                              </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                              <p className="text-xs">View Campaigns (Coming Soon)</p>
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        </TooltipProvider>
+                                      </div>
+                                    </TableCell>
+                                  </TableRow>
+                                ))
+                              ) : (
+                                account.metadata?.country_codes?.map((code: string) => (
+                                  <TableRow key={code}>
+                                    <TableCell>
+                                      <Badge variant="outline" className="font-semibold">
+                                        {code}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell className="font-mono text-sm">
+                                      {account.marketplace?.countryCode === code ? account.profileDetails?.profileId : 'N/A'}
+                                    </TableCell>
+                                    <TableCell className="font-mono text-sm">N/A</TableCell>
+                                    <TableCell className="text-center">
+                                      <Switch
+                                        defaultChecked={true}
+                                        disabled
+                                        aria-label={`Sync ${code} marketplace`}
+                                      />
+                                    </TableCell>
+                                    <TableCell>
+                                      <div className="flex items-center justify-center gap-1">
+                                        <TooltipProvider>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8"
+                                                disabled
+                                              >
+                                                <BarChart className="h-4 w-4" />
+                                              </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                              <p className="text-xs">View Dashboard (Coming Soon)</p>
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        </TooltipProvider>
+                                        <TooltipProvider>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8"
+                                                disabled
+                                              >
+                                                <ExternalLink className="h-4 w-4" />
+                                              </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                              <p className="text-xs">View Campaigns (Coming Soon)</p>
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        </TooltipProvider>
+                                      </div>
+                                    </TableCell>
+                                  </TableRow>
+                                ))
+                              )}
+                            </TableBody>
+                          </Table>
                         </div>
                       </div>
                     </>
