@@ -173,10 +173,10 @@ export const AccountCard: React.FC<AccountCardProps> = ({
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="outline">
-              {account.marketplace.countryCode}
+              {account.marketplace?.countryCode || 'N/A'}
             </Badge>
             <span className="text-xs text-muted-foreground">
-              {account.marketplace.name}
+              {account.marketplace?.name || 'Unknown'}
             </span>
           </div>
         </div>

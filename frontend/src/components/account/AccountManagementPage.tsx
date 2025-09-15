@@ -121,11 +121,11 @@ export const AccountManagementPage: React.FC<AccountManagementPageProps> = ({
     // Apply search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(account => 
-        account.accountName.toLowerCase().includes(query) ||
-        account.accountId.toLowerCase().includes(query) ||
-        account.marketplace.name.toLowerCase().includes(query) ||
-        account.marketplace.countryCode.toLowerCase().includes(query)
+      filtered = filtered.filter(account =>
+        account.accountName?.toLowerCase().includes(query) ||
+        account.accountId?.toLowerCase().includes(query) ||
+        (account.marketplace?.name?.toLowerCase().includes(query) ?? false) ||
+        (account.marketplace?.countryCode?.toLowerCase().includes(query) ?? false)
       );
     }
 

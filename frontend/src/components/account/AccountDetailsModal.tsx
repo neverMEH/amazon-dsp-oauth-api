@@ -192,8 +192,8 @@ export const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
                     Marketplace
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge variant="outline">{account.marketplace.countryCode}</Badge>
-                    <span className="text-sm">{account.marketplace.name}</span>
+                    <Badge variant="outline">{account.marketplace?.countryCode || 'N/A'}</Badge>
+                    <span className="text-sm">{account.marketplace?.name || 'Unknown'}</span>
                   </div>
                 </div>
 

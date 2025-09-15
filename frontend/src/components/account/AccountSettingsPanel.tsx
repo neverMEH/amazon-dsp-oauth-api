@@ -230,7 +230,7 @@ export const AccountSettingsPanel: React.FC<AccountSettingsPanelProps> = ({
                     <span className="flex items-center gap-2">
                       {defaultAccount.accountName}
                       <span className="text-xs text-muted-foreground">
-                        ({defaultAccount.marketplace.countryCode})
+                        ({defaultAccount.marketplace?.countryCode || 'N/A'})
                       </span>
                     </span>
                   ) : (
@@ -245,7 +245,7 @@ export const AccountSettingsPanel: React.FC<AccountSettingsPanelProps> = ({
                     <div className="flex items-center justify-between w-full">
                       <span>{account.accountName}</span>
                       <span className="text-xs text-muted-foreground ml-2">
-                        {account.marketplace.countryCode}
+                        {account.marketplace?.countryCode || 'N/A'}
                       </span>
                     </div>
                   </SelectItem>
