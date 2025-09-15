@@ -124,10 +124,11 @@ export const ReauthorizationFlow: React.FC<ReauthorizationFlowProps> = ({
       // Check if the account has been reauthorized
       const updatedAccount = await accountService.getAccountDetails(account.id);
 
-      if (updatedAccount.status === 'healthy') {
+      // For disconnected accounts becoming active, or expired accounts becoming healthy
+      if (updatedAccount.status !== 'disconnected' && updatedAccount.status !== account.status) {
         setProgress(100);
         setCurrentStep('success');
-        
+
         toast({
           title: "Reauthorization successful",
           description: "Your account has been successfully reauthorized.",
@@ -140,7 +141,8 @@ export const ReauthorizationFlow: React.FC<ReauthorizationFlowProps> = ({
           }, 2000);
         }
       } else {
-        throw new Error('Authorization was not completed successfully');
+        // Account is still disconnected, user may have cancelled
+        throw new Error('Authorization was not completed. Please complete the Amazon sign-in process.');
       }
     } catch (error) {
       console.error('Failed to verify authorization:', error);
