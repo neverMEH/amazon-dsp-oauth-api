@@ -12,7 +12,8 @@ import {
   XCircle,
   CircleOff,
   ExternalLink,
-  Download
+  Download,
+  Shield
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,6 +31,7 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ResponsiveBreadcrumbNav } from '@/components/ui/breadcrumb';
 import { AccountCard, AccountCardSkeleton } from './AccountCard';
+import { AccountTable, AccountTableSkeleton } from './AccountTable';
 import { AccountDetailsModal } from './AccountDetailsModal';
 import { ReauthorizationFlow } from './ReauthorizationFlow';
 import { AccountSettingsPanel } from './AccountSettingsPanel';
@@ -37,6 +39,7 @@ import { Account, AccountStatus, AccountSettings } from '@/types/account';
 import { accountService } from '@/services/accountService';
 import { useToast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
+import { AnimatePresence, motion } from 'framer-motion';
 
 interface AccountManagementPageProps {
   onAddAccount?: () => void;
@@ -58,6 +61,7 @@ export const AccountManagementPage: React.FC<AccountManagementPageProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<AccountStatus | 'all'>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const [activeTab, setActiveTab] = useState('accounts');
   
   // Modal states
@@ -333,35 +337,77 @@ export const AccountManagementPage: React.FC<AccountManagementPageProps> = ({
 
       {/* Status Overview */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        <div className="flex items-center gap-3 p-4 border rounded-lg bg-card">
-          <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-full">
-            <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.1 }}
+          className="relative overflow-hidden rounded-xl border bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-950/20 dark:to-green-900/10 p-4 shadow-sm hover:shadow-md transition-shadow"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-green-500/10 dark:bg-green-500/20 rounded-xl">
+              <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+            </div>
+            <div className="flex-1">
+              <p className="text-xs font-medium text-green-700 dark:text-green-400 uppercase tracking-wide">Active</p>
+              <p className="text-3xl font-bold text-green-900 dark:text-green-100">{statusCounts.active}</p>
+            </div>
           </div>
-          <div className="flex-1">
-            <p className="text-sm text-muted-foreground">Active</p>
-            <p className="text-2xl font-bold">{statusCounts.active}</p>
-          </div>
-        </div>
+          <div className="absolute -right-4 -bottom-4 h-24 w-24 rounded-full bg-green-200/20 dark:bg-green-400/10" />
+        </motion.div>
 
-        <div className="flex items-center gap-3 p-4 border rounded-lg bg-card">
-          <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-full">
-            <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.2 }}
+          className="relative overflow-hidden rounded-xl border bg-gradient-to-br from-red-50 to-red-100/50 dark:from-red-950/20 dark:to-red-900/10 p-4 shadow-sm hover:shadow-md transition-shadow"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-red-500/10 dark:bg-red-500/20 rounded-xl">
+              <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+            </div>
+            <div className="flex-1">
+              <p className="text-xs font-medium text-red-700 dark:text-red-400 uppercase tracking-wide">Needs Attention</p>
+              <p className="text-3xl font-bold text-red-900 dark:text-red-100">{statusCounts.error}</p>
+            </div>
           </div>
-          <div className="flex-1">
-            <p className="text-sm text-muted-foreground">Needs Attention</p>
-            <p className="text-2xl font-bold">{statusCounts.error}</p>
-          </div>
-        </div>
+          <div className="absolute -right-4 -bottom-4 h-24 w-24 rounded-full bg-red-200/20 dark:bg-red-400/10" />
+        </motion.div>
 
-        <div className="flex items-center gap-3 p-4 border rounded-lg bg-card">
-          <div className="p-2 bg-gray-100 dark:bg-gray-900/30 rounded-full">
-            <CircleOff className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.3 }}
+          className="relative overflow-hidden rounded-xl border bg-gradient-to-br from-gray-50 to-gray-100/50 dark:from-gray-950/20 dark:to-gray-900/10 p-4 shadow-sm hover:shadow-md transition-shadow"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-gray-500/10 dark:bg-gray-500/20 rounded-xl">
+              <CircleOff className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+            </div>
+            <div className="flex-1">
+              <p className="text-xs font-medium text-gray-700 dark:text-gray-400 uppercase tracking-wide">Disconnected</p>
+              <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">{statusCounts.disconnected}</p>
+            </div>
           </div>
-          <div className="flex-1">
-            <p className="text-sm text-muted-foreground">Disconnected</p>
-            <p className="text-2xl font-bold">{statusCounts.disconnected}</p>
+          <div className="absolute -right-4 -bottom-4 h-24 w-24 rounded-full bg-gray-200/20 dark:bg-gray-400/10" />
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.4 }}
+          className="relative overflow-hidden rounded-xl border bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/20 dark:to-blue-900/10 p-4 shadow-sm hover:shadow-md transition-shadow"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-blue-500/10 dark:bg-blue-500/20 rounded-xl">
+              <Shield className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div className="flex-1">
+              <p className="text-xs font-medium text-blue-700 dark:text-blue-400 uppercase tracking-wide">Total Accounts</p>
+              <p className="text-3xl font-bold text-blue-900 dark:text-blue-100">{accounts.length}</p>
+            </div>
           </div>
-        </div>
+          <div className="absolute -right-4 -bottom-4 h-24 w-24 rounded-full bg-blue-200/20 dark:bg-blue-400/10" />
+        </motion.div>
       </div>
 
       {/* Main Content Tabs */}
@@ -400,67 +446,123 @@ export const AccountManagementPage: React.FC<AccountManagementPageProps> = ({
               </Select>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex gap-1 p-1 bg-muted rounded-lg">
               <Button
-                variant={viewMode === 'grid' ? 'default' : 'outline'}
-                size="icon"
-                onClick={() => setViewMode('grid')}
+                variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => {
+                  setIsTransitioning(true);
+                  setTimeout(() => {
+                    setViewMode('grid');
+                    setIsTransitioning(false);
+                  }, 150);
+                }}
+                className="gap-2"
               >
                 <Grid3x3 className="h-4 w-4" />
+                <span className="hidden sm:inline">Grid</span>
               </Button>
               <Button
-                variant={viewMode === 'list' ? 'default' : 'outline'}
-                size="icon"
-                onClick={() => setViewMode('list')}
+                variant={viewMode === 'list' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => {
+                  setIsTransitioning(true);
+                  setTimeout(() => {
+                    setViewMode('list');
+                    setIsTransitioning(false);
+                  }, 150);
+                }}
+                className="gap-2"
               >
                 <List className="h-4 w-4" />
+                <span className="hidden sm:inline">Table</span>
               </Button>
             </div>
           </div>
 
           {/* Accounts Display */}
-          {isLoading ? (
-            <div className={cn(
-              viewMode === 'grid'
-                ? "grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6"
-                : "space-y-4"
-            )}>
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <AccountCardSkeleton key={i} />
-              ))}
-            </div>
-          ) : filteredAccounts.length === 0 ? (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>No accounts found</AlertTitle>
-              <AlertDescription>
-                {searchQuery || statusFilter !== 'all' 
-                  ? "No accounts match your current filters. Try adjusting your search or filters."
-                  : "You haven't connected any Amazon DSP accounts yet. Click 'Add Account' to get started."}
-              </AlertDescription>
-            </Alert>
-          ) : (
-            <ScrollArea className="h-[600px] pr-4">
-              <div className={cn(
-                viewMode === 'grid'
-                  ? "grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6"
-                  : "space-y-4"
-              )}>
-                {filteredAccounts.map((account) => (
-                  <AccountCard
-                    key={account.id}
-                    account={account}
-                    onViewDetails={handleViewDetails}
-                    onDisconnect={handleDisconnectAccount}
-                    onReauthorize={handleReauthorize}
-                    onRefresh={handleRefreshAccount}
-                    onSetDefault={settings ? handleSetDefaultAccount : undefined}
-                    isRefreshing={isRefreshing}
-                  />
-                ))}
-              </div>
-            </ScrollArea>
-          )}
+          <div className={cn(
+            "transition-opacity duration-200",
+            isTransitioning && "opacity-50"
+          )}>
+            {isLoading ? (
+              viewMode === 'grid' ? (
+                <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+                  {[1, 2, 3, 4, 5, 6].map((i) => (
+                    <AccountCardSkeleton key={i} />
+                  ))}
+                </div>
+              ) : (
+                <AccountTableSkeleton />
+              )
+            ) : filteredAccounts.length === 0 ? (
+              <Alert className="border-2 border-dashed">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>No accounts found</AlertTitle>
+                <AlertDescription>
+                  {searchQuery || statusFilter !== 'all'
+                    ? "No accounts match your current filters. Try adjusting your search or filters."
+                    : "You haven't connected any Amazon DSP accounts yet. Click 'Sync from Amazon' to get started."}
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <AnimatePresence mode="wait">
+                {viewMode === 'grid' ? (
+                  <motion.div
+                    key="grid"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <ScrollArea className="h-[600px] pr-4">
+                      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+                        {filteredAccounts.map((account, index) => (
+                          <motion.div
+                            key={account.id}
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{
+                              duration: 0.2,
+                              delay: index * 0.02,
+                            }}
+                          >
+                            <AccountCard
+                              account={account}
+                              onViewDetails={handleViewDetails}
+                              onDisconnect={handleDisconnectAccount}
+                              onReauthorize={handleReauthorize}
+                              onRefresh={handleRefreshAccount}
+                              onSetDefault={settings ? handleSetDefaultAccount : undefined}
+                              isRefreshing={isRefreshing}
+                            />
+                          </motion.div>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="table"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <AccountTable
+                      accounts={filteredAccounts}
+                      onViewDetails={handleViewDetails}
+                      onDisconnect={handleDisconnectAccount}
+                      onReauthorize={handleReauthorize}
+                      onRefresh={handleRefreshAccount}
+                      onSetDefault={settings ? handleSetDefaultAccount : undefined}
+                      isRefreshing={isRefreshing}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            )}
+          </div>
 
           {/* Quick Actions Alert */}
           {statusCounts.error > 0 && (
