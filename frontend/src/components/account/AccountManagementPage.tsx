@@ -5,8 +5,6 @@ import {
   RefreshCw,
   Search,
   Filter,
-  Grid3x3,
-  List,
   AlertCircle,
   CheckCircle,
   XCircle,
@@ -26,11 +24,7 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { ResponsiveBreadcrumbNav } from '@/components/ui/breadcrumb';
-import { AccountCard, AccountCardSkeleton } from './AccountCard';
 import { AccountTable, AccountTableSkeleton } from './AccountTable';
 import { AccountDetailsModal } from './AccountDetailsModal';
 import { ReauthorizationFlow } from './ReauthorizationFlow';
@@ -39,7 +33,7 @@ import { Account, AccountStatus, AccountSettings } from '@/types/account';
 import { accountService } from '@/services/accountService';
 import { useToast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 interface AccountManagementPageProps {
   onAddAccount?: () => void;
@@ -60,8 +54,6 @@ export const AccountManagementPage: React.FC<AccountManagementPageProps> = ({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<AccountStatus | 'all'>('all');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [isTransitioning, setIsTransitioning] = useState(false);
   const [activeTab, setActiveTab] = useState('accounts');
   
   // Modal states
@@ -80,12 +72,6 @@ export const AccountManagementPage: React.FC<AccountManagementPageProps> = ({
     filterAccounts();
   }, [accounts, searchQuery, statusFilter]);
 
-  // Update view mode based on settings
-  useEffect(() => {
-    if (settings) {
-      setViewMode(settings.dashboardLayout);
-    }
-  }, [settings]);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -446,55 +432,12 @@ export const AccountManagementPage: React.FC<AccountManagementPageProps> = ({
               </Select>
             </div>
 
-            <div className="flex gap-1 p-1 bg-muted rounded-lg">
-              <Button
-                variant={viewMode === 'grid' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => {
-                  setIsTransitioning(true);
-                  setTimeout(() => {
-                    setViewMode('grid');
-                    setIsTransitioning(false);
-                  }, 150);
-                }}
-                className="gap-2"
-              >
-                <Grid3x3 className="h-4 w-4" />
-                <span className="hidden sm:inline">Grid</span>
-              </Button>
-              <Button
-                variant={viewMode === 'list' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => {
-                  setIsTransitioning(true);
-                  setTimeout(() => {
-                    setViewMode('list');
-                    setIsTransitioning(false);
-                  }, 150);
-                }}
-                className="gap-2"
-              >
-                <List className="h-4 w-4" />
-                <span className="hidden sm:inline">Table</span>
-              </Button>
-            </div>
           </div>
 
           {/* Accounts Display */}
-          <div className={cn(
-            "transition-opacity duration-200",
-            isTransitioning && "opacity-50"
-          )}>
+          <div>
             {isLoading ? (
-              viewMode === 'grid' ? (
-                <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
-                  {[1, 2, 3, 4, 5, 6].map((i) => (
-                    <AccountCardSkeleton key={i} />
-                  ))}
-                </div>
-              ) : (
-                <AccountTableSkeleton />
-              )
+              <AccountTableSkeleton />
             ) : filteredAccounts.length === 0 ? (
               <Alert className="border-2 border-dashed">
                 <AlertCircle className="h-4 w-4" />
@@ -506,61 +449,21 @@ export const AccountManagementPage: React.FC<AccountManagementPageProps> = ({
                 </AlertDescription>
               </Alert>
             ) : (
-              <AnimatePresence mode="wait">
-                {viewMode === 'grid' ? (
-                  <motion.div
-                    key="grid"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <ScrollArea className="h-[600px] pr-4">
-                      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
-                        {filteredAccounts.map((account, index) => (
-                          <motion.div
-                            key={account.id}
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{
-                              duration: 0.2,
-                              delay: index * 0.02,
-                            }}
-                          >
-                            <AccountCard
-                              account={account}
-                              onViewDetails={handleViewDetails}
-                              onDisconnect={handleDisconnectAccount}
-                              onReauthorize={handleReauthorize}
-                              onRefresh={handleRefreshAccount}
-                              onSetDefault={settings ? handleSetDefaultAccount : undefined}
-                              isRefreshing={isRefreshing}
-                            />
-                          </motion.div>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key="table"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <AccountTable
-                      accounts={filteredAccounts}
-                      onViewDetails={handleViewDetails}
-                      onDisconnect={handleDisconnectAccount}
-                      onReauthorize={handleReauthorize}
-                      onRefresh={handleRefreshAccount}
-                      onSetDefault={settings ? handleSetDefaultAccount : undefined}
-                      isRefreshing={isRefreshing}
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                <AccountTable
+                  accounts={filteredAccounts}
+                  onViewDetails={handleViewDetails}
+                  onDisconnect={handleDisconnectAccount}
+                  onReauthorize={handleReauthorize}
+                  onRefresh={handleRefreshAccount}
+                  onSetDefault={settings ? handleSetDefaultAccount : undefined}
+                  isRefreshing={isRefreshing}
+                />
+              </motion.div>
             )}
           </div>
 
@@ -583,10 +486,6 @@ export const AccountManagementPage: React.FC<AccountManagementPageProps> = ({
             accounts={accounts}
             onSettingsUpdate={(updatedSettings) => {
               setSettings(updatedSettings);
-              // Update view mode if dashboard layout changed
-              if (updatedSettings.dashboardLayout !== viewMode) {
-                setViewMode(updatedSettings.dashboardLayout);
-              }
             }}
           />
         </TabsContent>
