@@ -30,14 +30,19 @@ export interface AmazonAdsAccountsResponse {
 }
 
 // Extended account with local database fields
-export interface StoredAmazonAccount extends AmazonAdsAccount {
+export interface StoredAmazonAccount {
   id: string; // Local database ID
   userId: string;
+  adsAccountId: string;
+  accountName: string;
+  status: 'CREATED' | 'DISABLED' | 'PARTIALLY_CREATED' | 'PENDING';
   marketplaceId?: string;
   accountType: string;
   isDefault: boolean;
   connectedAt: string;
   lastSyncedAt?: string;
+  countryCodes?: string[]; // Optional at root for backward compatibility
+  alternateIds?: AlternateId[]; // Optional at root for backward compatibility
   metadata: {
     alternateIds: AlternateId[];
     countryCodes: string[];
