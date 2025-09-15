@@ -1,0 +1,3 @@
+# Spec Summary (Lite)
+
+Restructure the accounts page with three subpages: Sponsored Ads (default), DSP, and AMC, accessed via tabs. The Sponsored Ads subpage displays profile IDs, entity IDs, marketplaces, and last managed dates. DSP subpage shows DSP accounts with their identifiers and marketplaces. AMC subpage displays AMC instances with embedded associated DSP and Sponsored Ads account information. Navigation flow: Dashboard → Accounts → defaults to Sponsored Ads subpage.

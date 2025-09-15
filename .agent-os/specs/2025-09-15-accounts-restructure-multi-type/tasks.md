@@ -1,0 +1,171 @@
+# Spec Tasks
+
+These are the tasks to be completed for the spec detailed in @.agent-os/specs/2025-09-15-accounts-restructure-multi-type/spec.md
+
+> Created: 2025-09-15
+> Status: In Progress
+> Last Updated: 2025-09-15
+
+## Tasks
+
+- [x] 1. Database Schema Updates for Multi-Type Account Support
+  - [x] 1.1 Write tests for new database columns and constraints
+    - [x] Test `account_type` column accepts valid values (advertising, dsp, amc)
+    - [x] Test `entity_id` column stores Amazon entity identifiers
+    - [x] Test `profile_id` column stores numeric profile identifiers
+    - [x] Test `last_managed_at` column stores management timestamps
+    - [x] Test unique constraints and relationship tables
+  - [x] 1.2 Create database migration script
+    - [x] Add `account_type` VARCHAR(20) column with CHECK constraint
+    - [x] Add `entity_id` VARCHAR(255) column for Amazon entity IDs
+    - [x] Add `profile_id` VARCHAR(255) column for profile identifiers
+    - [x] Add `last_managed_at` TIMESTAMP column for tracking
+    - [x] Add relationship tables (account_relationships, amc_instance_accounts)
+    - [x] Update existing records with default values
+  - [x] 1.3 Create rollback migration for safety
+    - [x] Create 005_rollback_account_type_support.sql
+    - [x] Include all schema rollback operations
+    - [x] Test rollback procedures
+  - [x] 1.4 Update Pydantic schemas
+    - [x] Create new account_types.py schema file
+    - [x] Create `AccountTypeFilter` schema for filtering
+    - [x] Create type-specific response schemas (SponsoredAdsAccountResponse, DSPAccountResponse, AMCAccountResponse)
+  - [x] 1.5 Create migration application script
+    - [x] Create apply_account_type_migration.py
+    - [x] Add migration validation logic
+    - [x] Include helper functions for relationships
+
+- [x] 2. Backend API Endpoint Restructure for Account Types
+  - [x] 2.1 Write tests for new endpoint structure
+    - [x] Test `/api/v1/accounts/sponsored-ads` endpoint returns only sponsored ads accounts
+    - [x] Test `/api/v1/accounts/dsp` endpoint returns only DSP accounts
+    - [x] Test `/api/v1/accounts/amc` endpoint returns only AMC accounts
+    - [x] Test filtering by account_type works correctly
+    - [x] Test pagination works for each account type
+    - [x] Test error handling for missing permissions (403 handling)
+  - [x] 2.2 Implement account type-specific endpoints
+    - [x] Create `get_sponsored_ads_accounts()` endpoint handler
+    - [x] Create `get_dsp_accounts()` endpoint handler
+    - [x] Create `get_amc_instances()` endpoint handler
+    - [x] Add filtering logic by account_type in queries
+  - [x] 2.3 Create new account management endpoints
+    - [x] Create POST /accounts/{id}/set-managed endpoint
+    - [x] Create GET /accounts/relationships/{id} endpoint
+    - [x] Create POST /accounts/sync endpoint for batch sync
+    - [x] Add access_denied flags for users without DSP/AMC
+  - [x] 2.4 Create comprehensive schemas for account types
+    - [x] Create SponsoredAdsAccountResponse schema
+    - [x] Create DSPAccountResponse schema
+    - [x] Create AMCAccountResponse schema with associations
+  - [x] 2.5 Implement relationship and management features
+    - [x] Add account relationships query functionality
+    - [x] Add last_managed_at tracking functionality
+    - [x] Add sync status tracking schemas
+  - [x] 2.6 Create account_types.py API module
+    - [x] Implement all required endpoints with proper error handling
+    - [x] Add support for pagination and sorting
+    - [x] Include metadata transformation for marketplaces
+
+- [ ] 3. Frontend Navigation and Component Restructure
+  - [ ] 3.1 Write tests for new navigation structure
+    - [ ] Test tab navigation renders correctly
+    - [ ] Test active tab state management
+    - [ ] Test tab switching updates URL and content
+    - [ ] Test responsive behavior on mobile devices
+    - [ ] Test keyboard navigation accessibility
+  - [ ] 3.2 Create tab-based navigation component
+    - [ ] Build `AccountTypeTabs` component with three tabs
+    - [ ] Implement active state management with Zustand
+    - [ ] Add URL synchronization for deep linking
+    - [ ] Style tabs with shadcn/ui components
+  - [ ] 3.3 Update accounts page layout
+    - [ ] Restructure `AccountManagementPage` to use tab layout
+    - [ ] Remove old single-table view
+    - [ ] Add tab content containers for each account type
+    - [ ] Implement responsive grid/table switching
+  - [ ] 3.4 Create reusable account table component
+    - [ ] Build `AccountTypeTable` component accepting account type prop
+    - [ ] Add account type-specific column configurations
+    - [ ] Implement filtering and sorting for each type
+    - [ ] Add type-specific action buttons and status indicators
+  - [ ] 3.5 Update routing and state management
+    - [ ] Add route parameters for account type selection
+    - [ ] Update Zustand store to handle account type state
+    - [ ] Implement URL state synchronization
+  - [ ] 3.6 Verify all frontend tests pass
+    - [ ] Run component tests for new navigation
+    - [ ] Test tab switching functionality
+    - [ ] Test responsive behavior across devices
+
+- [ ] 4. Account Type-Specific Table Components and Features
+  - [ ] 4.1 Write tests for specialized table components
+    - [ ] Test sponsored ads table shows relevant columns (campaigns, keywords, ads)
+    - [ ] Test DSP table shows relevant columns (orders, line items, creatives)
+    - [ ] Test AMC table shows relevant columns (audiences, insights, workflows)
+    - [ ] Test account type-specific actions work correctly
+    - [ ] Test data fetching for each account type
+  - [ ] 4.2 Create SponsoredAdsAccountTable component
+    - [ ] Add columns for campaign count, active keywords, daily spend
+    - [ ] Implement sponsored ads specific actions (create campaign, view reports)
+    - [ ] Add status indicators for campaign performance
+    - [ ] Include quick access to Sponsored Products/Brands/Display
+  - [ ] 4.3 Create DSPAccountTable component
+    - [ ] Add columns for order count, active line items, DSP spend
+    - [ ] Implement DSP specific actions (create order, view audiences)
+    - [ ] Add status indicators for order performance
+    - [ ] Include quick access to programmatic campaign tools
+  - [ ] 4.4 Create AMCAccountTable component
+    - [ ] Add columns for audience count, workflow status, data freshness
+    - [ ] Implement AMC specific actions (create audience, run workflow)
+    - [ ] Add status indicators for data connection health
+    - [ ] Include quick access to audience insights and analytics
+  - [ ] 4.5 Implement account type-specific API calls
+    - [ ] Update frontend API service to call new backend endpoints
+    - [ ] Add error handling for account type-specific failures
+    - [ ] Implement optimistic updates for better UX
+  - [ ] 4.6 Add account type-specific quick actions
+    - [ ] Create type-specific context menus and action buttons
+    - [ ] Implement account linking/unlinking for each type
+    - [ ] Add bulk operations for account management
+  - [ ] 4.7 Verify all table component tests pass
+    - [ ] Test data loading and display for each account type
+    - [ ] Test account type-specific actions and interactions
+    - [ ] Test error handling and loading states
+
+- [ ] 5. Integration Testing and End-to-End Verification
+  - [ ] 5.1 Write comprehensive integration tests
+    - [ ] Test complete user flow from login to account type selection
+    - [ ] Test Amazon API integration with new account classification
+    - [ ] Test data consistency between frontend and backend
+    - [ ] Test account sync preserves account type information
+    - [ ] Test error scenarios and recovery mechanisms
+  - [ ] 5.2 Create end-to-end test scenarios
+    - [ ] Test user navigates to sponsored ads tab and sees relevant accounts
+    - [ ] Test user switches between account types and data updates correctly
+    - [ ] Test account refresh maintains correct account type classifications
+    - [ ] Test account linking/unlinking for different account types
+  - [ ] 5.3 Performance testing for new structure
+    - [ ] Test table loading performance with large numbers of accounts
+    - [ ] Test tab switching performance and responsiveness
+    - [ ] Test API response times for account type-specific endpoints
+    - [ ] Test database query performance with new indices
+  - [ ] 5.4 Accessibility and UX testing
+    - [ ] Test keyboard navigation through tabs and tables
+    - [ ] Test screen reader compatibility with new navigation
+    - [ ] Test responsive behavior across different screen sizes
+    - [ ] Test color contrast and visual indicators
+  - [ ] 5.5 Data migration testing
+    - [ ] Test migration of existing accounts to new schema
+    - [ ] Verify no data loss during schema updates
+    - [ ] Test rollback scenarios if migration fails
+    - [ ] Validate account type assignments are correct
+  - [ ] 5.6 Production deployment preparation
+    - [ ] Create deployment checklist for database migration
+    - [ ] Prepare rollback plan for production deployment
+    - [ ] Test feature flags for gradual rollout
+    - [ ] Document new account type management for users
+  - [ ] 5.7 Verify all integration tests pass
+    - [ ] Run full test suite including unit, integration, and e2e tests
+    - [ ] Verify performance benchmarks are met
+    - [ ] Confirm accessibility standards compliance
+    - [ ] Validate production readiness
