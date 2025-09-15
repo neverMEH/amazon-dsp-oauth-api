@@ -164,7 +164,7 @@ export const AccountManagementPage: React.FC<AccountManagementPageProps> = ({
   const handleRefreshAll = async () => {
     setIsRefreshing(true);
     const activeAccounts = accounts.filter(acc =>
-      acc.status === 'active' || acc.status === 'healthy' || acc.status === 'warning'
+      acc.status === 'active'
     );
 
     let successCount = 0;
@@ -278,14 +278,10 @@ export const AccountManagementPage: React.FC<AccountManagementPageProps> = ({
     };
 
     accounts.forEach(account => {
-      // Map old statuses to new ones for backward compatibility
-      let status = account.status;
-      if (status === 'healthy' || status === 'warning') {
-        status = 'active';
-      } else if (status === 'expired') {
-        status = 'error';
+      const status = account.status as AccountStatus;
+      if (status in counts) {
+        counts[status]++;
       }
-      counts[status] = (counts[status] || 0) + 1;
     });
 
     return counts;

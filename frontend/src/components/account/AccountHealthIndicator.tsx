@@ -159,7 +159,7 @@ export const AccountHealthIndicator: React.FC<AccountHealthIndicatorProps> = ({
           >
             {isRefreshing ? 'Refreshing...' : config.label}
           </Badge>
-          {timeRemaining && status !== 'expired' && (
+          {timeRemaining && status !== 'error' && status !== 'disconnected' && (
             <div className={cn('flex items-center gap-1 mt-1', sizeClasses.fontSize, 'text-muted-foreground')}>
               <Clock className="h-3 w-3" />
               <span>{timeRemaining}</span>

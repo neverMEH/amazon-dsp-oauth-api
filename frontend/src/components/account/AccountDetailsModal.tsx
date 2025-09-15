@@ -137,22 +137,12 @@ export const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
 
         <div className="mt-4">
           {/* Status Alert */}
-          {account.status === 'expired' && (
+          {account.status === 'error' && (
             <Alert variant="destructive" className="mb-4">
               <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>Token Expired</AlertTitle>
+              <AlertTitle>Needs Attention</AlertTitle>
               <AlertDescription>
-                This account's token has expired. Please re-authorize to continue using this account.
-              </AlertDescription>
-            </Alert>
-          )}
-          
-          {account.status === 'warning' && (
-            <Alert className="mb-4">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>Token Expiring Soon</AlertTitle>
-              <AlertDescription>
-                This account's token will expire within 24 hours. Consider refreshing the token soon.
+                Auto-refresh has failed for this account. Please re-authorize to restore automatic token management.
               </AlertDescription>
             </Alert>
           )}

@@ -156,19 +156,12 @@ export const ReauthorizationFlow: React.FC<ReauthorizationFlowProps> = ({
     if (!account) return null;
 
     switch (account.status) {
-      case 'expired':
+      case 'error':
         return {
           icon: XCircle,
-          title: 'Token Expired',
-          description: 'Your access token has expired and needs to be renewed to continue accessing Amazon DSP services.',
+          title: 'Needs Attention',
+          description: 'Auto-refresh has failed for this account. Please reauthorize to restore automatic token management.',
           color: 'text-red-600 dark:text-red-400'
-        };
-      case 'warning':
-        return {
-          icon: AlertTriangle,
-          title: 'Token Expiring Soon',
-          description: `Your token will expire in ${account.tokenExpiresAt ? accountService.getTimeUntilExpiry(account.tokenExpiresAt) : 'unknown time'}. Reauthorize now to avoid service interruption.`,
-          color: 'text-yellow-600 dark:text-yellow-400'
         };
       case 'disconnected':
         return {

@@ -137,7 +137,7 @@ export const AccountCard: React.FC<AccountCardProps> = ({
                 </DropdownMenuItem>
               )}
               
-              {account.status === 'expired' && (
+              {account.status === 'error' && (
                 <DropdownMenuItem onClick={() => onReauthorize(account.id)}>
                   <Settings className="mr-2 h-4 w-4" />
                   Re-authorize
@@ -222,9 +222,9 @@ export const AccountCard: React.FC<AccountCardProps> = ({
             Details
           </Button>
           
-          {account.status === 'expired' || account.status === 'warning' ? (
+          {account.status === 'error' ? (
             <Button
-              variant={account.status === 'expired' ? 'destructive' : 'default'}
+              variant="destructive"
               size="sm"
               className="flex-1"
               onClick={() => onReauthorize(account.id)}
