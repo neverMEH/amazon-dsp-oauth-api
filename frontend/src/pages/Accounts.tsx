@@ -78,28 +78,29 @@ const AccountsPage: React.FC = () => {
 
   // Connect to Amazon
   const handleConnectAmazon = useCallback(async () => {
+    console.log('🔍 Connect button clicked!');
     setIsConnecting(true);
     try {
-      const token = await getAuthToken();
-      if (!token) {
-        throw new Error('No authentication token available');
-      }
+      console.log('🔍 Making request to /api/v1/auth/amazon/login...');
+      // Initiate OAuth flow (no auth required for this endpoint)
+      const response = await fetch('/api/v1/auth/amazon/login');
 
-      // Initiate OAuth flow
-      const response = await fetch('/api/v1/auth/amazon/login', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      console.log('🔍 Response status:', response.status);
+      console.log('🔍 Response ok:', response.ok);
 
       if (response.ok) {
         const data = await response.json();
+        console.log('🔍 Response data:', data);
         // Redirect to Amazon OAuth
+        console.log('🔍 Redirecting to:', data.auth_url);
         window.location.href = data.auth_url;
       } else {
+        const errorData = await response.text();
+        console.error('🔍 Response error:', errorData);
         throw new Error('Failed to initiate connection');
       }
     } catch (error) {
+      console.error('🔍 Connect failed:', error);
       toast({
         title: "Connection Failed",
         description: "Unable to connect to Amazon. Please try again.",
