@@ -58,10 +58,22 @@ class AccountService {
     return response.json();
   }
 
-  // Get all accounts (including DSP and AMC)
+  // Get all accounts
   async getAccounts(): Promise<AccountsResponse> {
-    const response = await this.fetchWithAuth('/api/v1/accounts/all-account-types');
+    try {
+      // Try the new unified endpoint first
+      const response = await this.fetchWithAuth('/api/v1/accounts/all-account-types');
+      return this.mapAccountsResponse(response);
+    } catch (error) {
+      console.warn('New endpoint failed, falling back to legacy endpoint:', error);
+      // Fall back to legacy endpoint
+      const response = await this.fetchWithAuth('/api/v1/accounts');
+      return this.mapAccountsResponse(response);
+    }
+  }
 
+  // Helper method to map backend response to frontend format
+  private mapAccountsResponse(response: any): AccountsResponse {
     // Map backend response to frontend format
     const mappedAccounts = response.accounts?.map((acc: any) => ({
       id: acc.id,
