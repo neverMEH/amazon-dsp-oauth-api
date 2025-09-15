@@ -158,8 +158,7 @@ export const AccountTable: React.FC<AccountTableProps> = ({
     const variants: Record<AccountStatus, 'default' | 'destructive' | 'secondary' | 'outline'> = {
       active: 'default',
       error: 'destructive',
-      disconnected: 'secondary',
-      pending: 'outline',
+      disconnected: 'secondary'
     };
 
     return (
@@ -206,8 +205,8 @@ export const AccountTable: React.FC<AccountTableProps> = ({
 
   const getMarketplaceCodes = (account: Account): string[] => {
     if (account.metadata?.alternate_ids?.length > 0) {
-      const uniqueCountries = new Set(account.metadata.alternate_ids.map((altId: any) => altId.countryCode));
-      return Array.from(uniqueCountries);
+      const uniqueCountries = new Set<string>(account.metadata.alternate_ids.map((altId: any) => altId.countryCode));
+      return Array.from(uniqueCountries) as string[];
     }
     return account.metadata?.country_codes || (account.marketplace?.countryCode ? [account.marketplace.countryCode] : []);
   };
