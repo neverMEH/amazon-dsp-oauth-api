@@ -94,7 +94,7 @@ const AccountsPage: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         // Redirect to Amazon OAuth
-        window.location.href = data.authorization_url;
+        window.location.href = data.auth_url;
       } else {
         throw new Error('Failed to initiate connection');
       }
