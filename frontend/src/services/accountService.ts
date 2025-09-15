@@ -351,36 +351,44 @@ class AccountService {
     return `${minutes}m`;
   }
 
-  // Sync accounts from Amazon Ads API
+  // Sync accounts from Amazon Ads API (including DSP and AMC)
   async syncAmazonAccounts(): Promise<any> {
-    const response = await this.fetchWithAuth('/api/v1/accounts/amazon-ads-accounts');
+    try {
+      // Try the new unified endpoint that includes DSP and AMC
+      const response = await this.fetchWithAuth('/api/v1/accounts/all-account-types');
+      return response;
+    } catch (error) {
+      console.warn('Unified endpoint failed, trying legacy amazon-ads-accounts endpoint:', error);
+      // Fall back to legacy endpoint
+      const response = await this.fetchWithAuth('/api/v1/accounts/amazon-ads-accounts');
 
-    // The Amazon API returns accounts in the response
-    if (response.accounts) {
-      // Map Amazon API response to our format
-      const mappedAccounts = response.accounts.map((acc: any) => ({
-        accountName: acc.accountName || acc.account_name || 'Unknown Account',
-        accountId: acc.adsAccountId || acc.accountId || acc.id,
-        accountType: 'advertising',
-        status: acc.status === 'CREATED' ? 'active' :
-                acc.status === 'DISABLED' ? 'disconnected' :
-                acc.status === 'PARTIALLY_CREATED' ? 'warning' :
-                acc.status === 'PENDING' ? 'warning' : 'disconnected',
-        metadata: {
-          alternate_ids: acc.alternateIds || [],
-          country_codes: acc.countryCodes || [],
-          errors: acc.errors || {},
-          api_status: acc.status
-        }
-      }));
+      // The Amazon API returns accounts in the response
+      if (response.accounts) {
+        // Map Amazon API response to our format
+        const mappedAccounts = response.accounts.map((acc: any) => ({
+          accountName: acc.accountName || acc.account_name || 'Unknown Account',
+          accountId: acc.adsAccountId || acc.accountId || acc.id,
+          accountType: 'advertising',
+          status: acc.status === 'CREATED' ? 'active' :
+                  acc.status === 'DISABLED' ? 'disconnected' :
+                  acc.status === 'PARTIALLY_CREATED' ? 'warning' :
+                  acc.status === 'PENDING' ? 'warning' : 'disconnected',
+          metadata: {
+            alternate_ids: acc.alternateIds || [],
+            country_codes: acc.countryCodes || [],
+            errors: acc.errors || {},
+            api_status: acc.status
+          }
+        }));
 
-      return {
-        ...response,
-        accounts: mappedAccounts
-      };
+        return {
+          ...response,
+          accounts: mappedAccounts
+        };
+      }
+
+      return response;
     }
-
-    return response;
   }
 }
 
