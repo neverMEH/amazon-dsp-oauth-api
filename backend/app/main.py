@@ -67,8 +67,8 @@ async def lifespan(app: FastAPI):
 
 # Create FastAPI application
 app = FastAPI(
-    title="Amazon DSP OAuth API",
-    description="OAuth 2.0 authentication service for Amazon DSP Campaign Insights API",
+    title="neverMEH API",
+    description="OAuth 2.0 authentication service for Amazon Advertising",
     version=settings.api_version,
     lifespan=lifespan,
     docs_url="/docs" if settings.environment == "development" else None,
