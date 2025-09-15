@@ -93,9 +93,9 @@ describe('AccountManagementPage', () => {
 
       vi.mocked(accountService.getSponsoredAdsAccounts).mockResolvedValue({
         accounts: [
-          { id: '1', status: 'active' },
-          { id: '2', status: 'active' },
-          { id: '3', status: 'error' },
+          { id: '1', accountName: 'Account 1', accountId: '1', accountType: 'advertising', status: 'active' },
+          { id: '2', accountName: 'Account 2', accountId: '2', accountType: 'advertising', status: 'active' },
+          { id: '3', accountName: 'Account 3', accountId: '3', accountType: 'advertising', status: 'error' },
         ],
         totalCount: 3,
       });
@@ -264,14 +264,14 @@ describe('AccountManagementPage', () => {
 
       vi.mocked(accountService.getSponsoredAdsAccounts).mockResolvedValue({
         accounts: [
-          { id: '1', status: 'active' },
-          { id: '2', status: 'active' },
-          { id: '3', status: 'error' },
+          { id: '1', accountName: 'Account 1', accountId: '1', accountType: 'advertising', status: 'active' },
+          { id: '2', accountName: 'Account 2', accountId: '2', accountType: 'advertising', status: 'active' },
+          { id: '3', accountName: 'Account 3', accountId: '3', accountType: 'advertising', status: 'error' },
         ],
         totalCount: 3,
       });
 
-      vi.mocked(accountService.refreshAccountToken).mockResolvedValue({});
+      vi.mocked(accountService.refreshAccountToken).mockResolvedValue(undefined as any);
 
       render(<AccountManagementPage />, { wrapper: createWrapper() });
 

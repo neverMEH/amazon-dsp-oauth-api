@@ -35,7 +35,7 @@ export const AccountTypeTabs: React.FC<AccountTypeTabsProps> = ({
     queryFn: () => accountService.getSponsoredAdsAccounts(),
     enabled: activeTab === 'sponsored-ads',
     staleTime: 5 * 60 * 1000, // 5 minutes
-    cacheTime: 10 * 60 * 1000, // 10 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
   });
 
   // Query for DSP accounts
@@ -44,7 +44,7 @@ export const AccountTypeTabs: React.FC<AccountTypeTabsProps> = ({
     queryFn: () => accountService.getDSPAccounts(),
     enabled: activeTab === 'dsp',
     staleTime: 5 * 60 * 1000,
-    cacheTime: 10 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
     retry: (failureCount, error: any) => {
       // Don't retry on 403 permission errors
       if (error?.response?.status === 403) return false;
@@ -58,7 +58,7 @@ export const AccountTypeTabs: React.FC<AccountTypeTabsProps> = ({
     queryFn: () => accountService.getAMCAccounts(),
     enabled: activeTab === 'amc',
     staleTime: 5 * 60 * 1000,
-    cacheTime: 10 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
     retry: (failureCount, error: any) => {
       // Don't retry on 403 permission errors
       if (error?.response?.status === 403) return false;
@@ -72,9 +72,9 @@ export const AccountTypeTabs: React.FC<AccountTypeTabsProps> = ({
   }, [activeTab, setSearchParams]);
 
   // Get account counts for badges
-  const sponsoredAdsCount = sponsoredAdsQuery.data?.totalCount || sponsoredAdsQuery.data?.accounts?.length || 0;
-  const dspCount = dspQuery.data?.totalCount || dspQuery.data?.accounts?.length || 0;
-  const amcCount = amcQuery.data?.totalCount || amcQuery.data?.instances?.length || 0;
+  const sponsoredAdsCount = (sponsoredAdsQuery.data as any)?.totalCount || (sponsoredAdsQuery.data as any)?.accounts?.length || 0;
+  const dspCount = (dspQuery.data as any)?.totalCount || (dspQuery.data as any)?.accounts?.length || 0;
+  const amcCount = (amcQuery.data as any)?.totalCount || (amcQuery.data as any)?.instances?.length || 0;
 
   const handleTabChange = (value: string) => {
     setActiveTab(value as AccountType);
@@ -138,26 +138,26 @@ export const AccountTypeTabs: React.FC<AccountTypeTabsProps> = ({
     switch (type) {
       case 'sponsored-ads':
         query = sponsoredAdsQuery;
-        accounts = query.data?.accounts || [];
+        accounts = (query.data as any)?.accounts || [];
         error = query.error;
         isLoading = query.isLoading;
         break;
       case 'dsp':
         query = dspQuery;
-        accounts = query.data?.accounts || [];
+        accounts = (query.data as any)?.accounts || [];
         error = query.error;
         isLoading = query.isLoading;
         break;
       case 'amc':
         query = amcQuery;
-        accounts = query.data?.instances || [];
+        accounts = (query.data as any)?.instances || [];
         error = query.error;
         isLoading = query.isLoading;
         break;
     }
 
     // Handle 403 permission errors
-    if (error?.response?.status === 403) {
+    if ((error as any)?.response?.status === 403) {
       return (
         <Alert className="border-2 border-dashed">
           <Shield className="h-4 w-4" />
@@ -228,7 +228,7 @@ export const AccountTypeTabs: React.FC<AccountTypeTabsProps> = ({
                 {dspCount}
               </Badge>
             )}
-            {dspQuery.error?.response?.status === 403 && (
+            {(dspQuery.error as any)?.response?.status === 403 && (
               <Badge variant="outline" className="ml-1 h-5 px-1.5">
                 <Shield className="h-3 w-3" />
               </Badge>
@@ -246,7 +246,7 @@ export const AccountTypeTabs: React.FC<AccountTypeTabsProps> = ({
                 {amcCount}
               </Badge>
             )}
-            {amcQuery.error?.response?.status === 403 && (
+            {(amcQuery.error as any)?.response?.status === 403 && (
               <Badge variant="outline" className="ml-1 h-5 px-1.5">
                 <Shield className="h-3 w-3" />
               </Badge>

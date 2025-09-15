@@ -144,7 +144,7 @@ export const AccountTypeTable: React.FC<AccountTypeTableProps> = ({
   };
 
   const renderStatus = (status: string) => {
-    const statusConfig = {
+    const statusConfig: Record<string, { color: string; label: string; tooltip: string }> = {
       active: { color: 'bg-green-500', label: 'Active', tooltip: 'Account is active and healthy' },
       error: { color: 'bg-red-500', label: 'Error', tooltip: 'Account needs attention' },
       disconnected: { color: 'bg-gray-500', label: 'Disconnected', tooltip: 'Account is disconnected' },
