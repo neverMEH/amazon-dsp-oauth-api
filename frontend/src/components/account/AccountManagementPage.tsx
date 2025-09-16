@@ -3,8 +3,6 @@ import {
   Plus,
   Settings,
   RefreshCw,
-  Search,
-  Filter,
   AlertCircle,
   CheckCircle,
   XCircle,
@@ -14,22 +12,13 @@ import {
   Shield
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AccountTypeTabs } from './AccountTypeTabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { ResponsiveBreadcrumbNav } from '@/components/ui/breadcrumb';
-import { AccountTable, AccountTableSkeleton } from './AccountTable';
 import { AccountDetailsModal } from './AccountDetailsModal';
 import { ReauthorizationFlow } from './ReauthorizationFlow';
-import { AccountSettingsPanel } from './AccountSettingsPanel';
-import { Account, AccountStatus, AccountSettings } from '@/types/account';
+import { Account, AccountStatus } from '@/types/account';
 import { accountService } from '@/services/accountService';
 import { useToast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
@@ -48,13 +37,8 @@ export const AccountManagementPage: React.FC<AccountManagementPageProps> = ({
   
   // State management
   const [accounts, setAccounts] = useState<Account[]>([]);
-  const [filteredAccounts, setFilteredAccounts] = useState<Account[]>([]);
-  const [settings, setSettings] = useState<AccountSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<AccountStatus | 'all'>('all');
-  const [activeTab, setActiveTab] = useState('accounts');
   
   // Modal states
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
@@ -67,20 +51,13 @@ export const AccountManagementPage: React.FC<AccountManagementPageProps> = ({
     loadData();
   }, []);
 
-  // Apply filters when search or status filter changes
-  useEffect(() => {
-    filterAccounts();
-  }, [accounts, searchQuery, statusFilter]);
 
 
   const loadData = async () => {
     setIsLoading(true);
     try {
       // Load accounts and settings in parallel
-      const [accountsResponse, settingsResponse] = await Promise.all([
-        accountService.getAccounts(),
-        accountService.getSettings().catch(() => null),
-      ]);
+      const accountsResponse = await accountService.getAccounts();
 
       // Update account status based on token expiry
       const updatedAccounts = accountsResponse.accounts.map((account: Account) => ({
@@ -89,10 +66,6 @@ export const AccountManagementPage: React.FC<AccountManagementPageProps> = ({
       }));
 
       setAccounts(updatedAccounts);
-      
-      if (settingsResponse) {
-        setSettings(settingsResponse.settings);
-      }
     } catch (error) {
       console.error('Failed to load accounts:', error);
       toast({
@@ -105,27 +78,6 @@ export const AccountManagementPage: React.FC<AccountManagementPageProps> = ({
     }
   };
 
-  const filterAccounts = () => {
-    let filtered = [...accounts];
-
-    // Apply search filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(account =>
-        account.accountName?.toLowerCase().includes(query) ||
-        account.accountId?.toLowerCase().includes(query) ||
-        (account.marketplace?.name?.toLowerCase().includes(query) ?? false) ||
-        (account.marketplace?.countryCode?.toLowerCase().includes(query) ?? false)
-      );
-    }
-
-    // Apply status filter
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(account => account.status === statusFilter);
-    }
-
-    setFilteredAccounts(filtered);
-  };
 
   const handleSyncFromAmazon = async () => {
     setIsRefreshing(true);
@@ -227,33 +179,6 @@ export const AccountManagementPage: React.FC<AccountManagementPageProps> = ({
     }
   };
 
-  const handleSetDefaultAccount = async (accountId: string) => {
-    if (!settings) return;
-
-    try {
-      await accountService.updateSettings({
-        defaultAccountId: accountId,
-      });
-
-      // Update local state
-      setAccounts(prev => prev.map(acc => ({
-        ...acc,
-        isDefault: acc.id === accountId,
-      })));
-
-      toast({
-        title: "Default account updated",
-        description: "Your default account has been changed.",
-      });
-    } catch (error) {
-      console.error('Failed to set default account:', error);
-      toast({
-        title: "Failed to update",
-        description: "Could not set default account. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
 
   const handleViewDetails = (account: Account) => {
     setSelectedAccount(account);
@@ -268,9 +193,19 @@ export const AccountManagementPage: React.FC<AccountManagementPageProps> = ({
     };
 
     accounts.forEach(account => {
-      const status = account.status as AccountStatus;
-      if (status in counts) {
-        counts[status]++;
+      // Check the actual status field (could be 'status' or other variations)
+      const status = (account.status || 'active').toLowerCase();
+
+      // Map various status values to our three categories
+      if (status === 'active' || status === 'connected' || status === 'created' || !status) {
+        counts.active++;
+      } else if (status === 'error' || status === 'failed' || status === 'needs_attention') {
+        counts.error++;
+      } else if (status === 'disconnected' || status === 'disabled' || status === 'inactive') {
+        counts.disconnected++;
+      } else {
+        // Default to active for unknown statuses
+        counts.active++;
       }
     });
 
@@ -396,100 +331,28 @@ export const AccountManagementPage: React.FC<AccountManagementPageProps> = ({
         </motion.div>
       </div>
 
-      {/* Main Content Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-auto grid-cols-2">
-          <TabsTrigger value="accounts">Accounts</TabsTrigger>
-          <TabsTrigger value="settings">Settings</TabsTrigger>
-        </TabsList>
+      {/* Account Type Tabs */}
+      <AccountTypeTabs
+        className="w-full"
+        onAccountSelect={handleViewDetails}
+        onAccountAction={(action, account) => {
+          if (action === 'reauthorize') {
+            handleReauthorize(account.id);
+          }
+        }}
+      />
 
-        {/* Accounts Tab */}
-        <TabsContent value="accounts" className="space-y-4">
-          {/* Filters and Controls */}
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-1 gap-2">
-              <div className="relative flex-1 max-w-sm">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Search accounts..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-              
-              <Select value={statusFilter} onValueChange={(value: any) => setStatusFilter(value)}>
-                <SelectTrigger className="w-[140px]">
-                  <Filter className="h-4 w-4 mr-2" />
-                  <SelectValue placeholder="Filter" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="error">Needs Attention</SelectItem>
-                  <SelectItem value="disconnected">Disconnected</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-          </div>
-
-          {/* Accounts Display */}
-          <div>
-            {isLoading ? (
-              <AccountTableSkeleton />
-            ) : filteredAccounts.length === 0 ? (
-              <Alert className="border-2 border-dashed">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>No accounts found</AlertTitle>
-                <AlertDescription>
-                  {searchQuery || statusFilter !== 'all'
-                    ? "No accounts match your current filters. Try adjusting your search or filters."
-                    : "You haven't connected any neverMEH accounts yet. Click 'Sync from Amazon' to get started."}
-                </AlertDescription>
-              </Alert>
-            ) : (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2 }}
-              >
-                <AccountTable
-                  accounts={filteredAccounts}
-                  onViewDetails={handleViewDetails}
-                  onDisconnect={handleDisconnectAccount}
-                  onReauthorize={handleReauthorize}
-                  onRefresh={handleRefreshAccount}
-                  onSetDefault={settings ? handleSetDefaultAccount : undefined}
-                  isRefreshing={isRefreshing}
-                />
-              </motion.div>
-            )}
-          </div>
-
-          {/* Quick Actions Alert */}
-          {statusCounts.error > 0 && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Action Required</AlertTitle>
-              <AlertDescription>
-                You have {statusCounts.error} account{statusCounts.error > 1 ? 's' : ''} that need attention.
-                Auto-refresh has failed for these accounts. Please reauthorize to restore access.
-              </AlertDescription>
-            </Alert>
-          )}
-        </TabsContent>
-
-        {/* Settings Tab */}
-        <TabsContent value="settings">
-          <AccountSettingsPanel
-            accounts={accounts}
-            onSettingsUpdate={(updatedSettings) => {
-              setSettings(updatedSettings);
-            }}
-          />
-        </TabsContent>
-      </Tabs>
+      {/* Quick Actions Alert */}
+      {statusCounts.error > 0 && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Action Required</AlertTitle>
+          <AlertDescription>
+            You have {statusCounts.error} account{statusCounts.error > 1 ? 's' : ''} that need attention.
+            Auto-refresh has failed for these accounts. Please reauthorize to restore access.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Modals */}
       <AccountDetailsModal

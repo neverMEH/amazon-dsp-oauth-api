@@ -191,6 +191,161 @@ async def refresh_token_if_needed(user_id: str, token_data: Dict, supabase) -> D
 # API ENDPOINTS
 # ============================================================================
 
+@router.get("/sponsored-ads")
+async def get_sponsored_ads_accounts(
+    current_user: Dict = Depends(RequireAuth),
+    next_token: Optional[str] = Query(None, description="Pagination token for next page"),
+    max_results: int = Query(100, ge=1, le=100, description="Maximum results per page")
+) -> Dict[str, Any]:
+    """
+    Get Sponsored Ads accounts filtered by account_type='advertising'
+
+    Returns:
+        Dictionary containing advertising accounts from database
+    """
+    supabase = get_supabase_service_client()
+    user_context = current_user
+    user_id = user_context.get("user_id")
+
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found in database"
+        )
+
+    try:
+        # Query database for accounts with account_type='advertising'
+        result = supabase.table("user_accounts").select("*").eq(
+            "user_id", user_id
+        ).eq(
+            "account_type", "advertising"
+        ).execute()
+
+        accounts = []
+        if result.data:
+            for acc in result.data:
+                account_dict = AmazonAccount.from_dict(acc).to_dict()
+                # Add marketplace name
+                account_dict["marketplace_name"] = AmazonAccount.from_dict(acc).marketplace_name
+                accounts.append(account_dict)
+
+        logger.info(f"Retrieved {len(accounts)} sponsored ads accounts from database for user {user_id}")
+
+        return {
+            "accounts": accounts,
+            "total_count": len(accounts)
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to retrieve sponsored ads accounts: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve sponsored ads accounts: {str(e)}"
+        )
+
+
+@router.get("/dsp")
+async def get_dsp_accounts(
+    current_user: Dict = Depends(RequireAuth)
+) -> Dict[str, Any]:
+    """
+    Get DSP accounts for the current user
+
+    Returns:
+        Dictionary containing DSP accounts
+    """
+    supabase = get_supabase_service_client()
+    user_context = current_user
+    user_id = user_context.get("user_id")
+
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found in database"
+        )
+
+    try:
+        # Query database for accounts with account_type='dsp'
+        result = supabase.table("user_accounts").select("*").eq(
+            "user_id", user_id
+        ).eq(
+            "account_type", "dsp"
+        ).execute()
+
+        accounts = []
+        if result.data:
+            for acc in result.data:
+                account_dict = AmazonAccount.from_dict(acc).to_dict()
+                # Add marketplace name
+                account_dict["marketplace_name"] = AmazonAccount.from_dict(acc).marketplace_name
+                accounts.append(account_dict)
+
+        logger.info(f"Retrieved {len(accounts)} DSP accounts from database for user {user_id}")
+
+        return {
+            "accounts": accounts,
+            "total_count": len(accounts)
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to retrieve DSP accounts: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve DSP accounts: {str(e)}"
+        )
+
+
+@router.get("/amc")
+async def get_amc_accounts(
+    current_user: Dict = Depends(RequireAuth)
+) -> Dict[str, Any]:
+    """
+    Get AMC accounts filtered by account_type='amc'
+
+    Returns:
+        Dictionary containing AMC accounts from database
+    """
+    supabase = get_supabase_service_client()
+    user_context = current_user
+    user_id = user_context.get("user_id")
+
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found in database"
+        )
+
+    try:
+        # Query database for accounts with account_type='amc'
+        result = supabase.table("user_accounts").select("*").eq(
+            "user_id", user_id
+        ).eq(
+            "account_type", "amc"
+        ).execute()
+
+        instances = []
+        if result.data:
+            for acc in result.data:
+                account_dict = AmazonAccount.from_dict(acc).to_dict()
+                # Add marketplace name
+                account_dict["marketplace_name"] = AmazonAccount.from_dict(acc).marketplace_name
+                instances.append(account_dict)
+
+        logger.info(f"Retrieved {len(instances)} AMC accounts from database for user {user_id}")
+
+        return {
+            "instances": instances,
+            "total_count": len(instances)
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to retrieve AMC accounts: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve AMC accounts: {str(e)}"
+        )
+
+
 @router.get("/amc-instances")
 async def get_amc_instances(
     current_user: Dict = Depends(RequireAuth)
@@ -201,42 +356,44 @@ async def get_amc_instances(
     Returns:
         Dictionary containing AMC instances
     """
+    supabase = get_supabase_service_client()
+    user_context = current_user
+    user_id = user_context.get("user_id")
+
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found in database"
+        )
+
     try:
-        # Get user's OAuth token
-        user_id = current_user["user_id"]
-        logger.info(f"Fetching AMC instances for user {user_id}")
+        # Query database for accounts with account_type='amc'
+        result = supabase.table("user_accounts").select("*").eq(
+            "user_id", user_id
+        ).eq(
+            "account_type", "amc"
+        ).execute()
 
-        # Get token from token service
-        oauth_token = await token_service.get_user_token(user_id)
+        instances = []
+        if result.data:
+            for acc in result.data:
+                account_dict = AmazonAccount.from_dict(acc).to_dict()
+                # Add marketplace name
+                account_dict["marketplace_name"] = AmazonAccount.from_dict(acc).marketplace_name
+                instances.append(account_dict)
 
-        if not oauth_token:
-            logger.warning(f"No OAuth token found for user {user_id}")
-            return {"instances": [], "message": "No authentication found"}
-
-        # Get access token
-        access_token = oauth_token.get("access_token")
-
-        # Fetch AMC instances from service
-        amc_instances = await dsp_amc_service.list_amc_instances(access_token)
-
-        logger.info(f"Retrieved {len(amc_instances)} AMC instances")
+        logger.info(f"Retrieved {len(instances)} AMC instances from database for user {user_id}")
 
         return {
-            "instances": amc_instances,
-            "total": len(amc_instances)
+            "instances": instances,
+            "total_count": len(instances)
         }
 
-    except TokenRefreshError as e:
-        logger.warning(f"Token refresh error: {str(e)}")
-        raise HTTPException(
-            status_code=401,
-            detail="Authentication token expired. Please re-authenticate."
-        )
     except Exception as e:
-        logger.error(f"Error fetching AMC instances: {str(e)}")
+        logger.error(f"Failed to retrieve AMC instances: {str(e)}")
         raise HTTPException(
-            status_code=500,
-            detail=f"Failed to fetch AMC instances: {str(e)}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve AMC instances: {str(e)}"
         )
 
 @router.get("/all-account-types")

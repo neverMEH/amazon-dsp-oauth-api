@@ -104,8 +104,10 @@ export function StatsCards() {
       try {
         setLoading(true)
         setError(null)
-        const statsData = await dashboardAPI.getUserStats()
-        setStats(statsData)
+
+        // Fetch real stats from the API
+        const stats = await dashboardAPI.getUserStats()
+        setStats(stats)
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to load statistics'
         setError(errorMessage)

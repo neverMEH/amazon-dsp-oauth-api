@@ -1,18 +1,22 @@
 import { useUser } from '@clerk/clerk-react'
+import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { 
-  Activity, 
-  Calendar, 
-  TrendingUp, 
-  Users, 
+import {
+  Activity,
+  Calendar,
+  TrendingUp,
+  Users,
   Settings,
   BarChart3,
   ArrowUpRight,
   ArrowDownRight,
-  Plus
+  Plus,
+  Database,
+  Target,
+  ShoppingCart
 } from 'lucide-react'
 import { DashboardHeader } from './DashboardHeader'
 import { StatsCards } from './StatsCards'
@@ -91,6 +95,7 @@ function getStatusColor(status: string) {
 
 export function Dashboard() {
   const { user } = useUser()
+  const navigate = useNavigate()
   const { currentAccount } = useDashboardStore()
 
   return (
@@ -218,9 +223,13 @@ export function Dashboard() {
               ))}
               
               <div className="pt-4 border-t">
-                <Button className="w-full" variant="outline">
+                <Button
+                  className="w-full"
+                  variant="outline"
+                  onClick={() => navigate('/accounts?type=amc')}
+                >
                   <BarChart3 className="h-4 w-4 mr-2" />
-                  View Detailed Reports
+                  View AMC Analytics
                 </Button>
               </div>
             </CardContent>
@@ -232,26 +241,64 @@ export function Dashboard() {
           <CardHeader>
             <CardTitle>Quick Actions</CardTitle>
             <CardDescription>
-              Common tasks and shortcuts
+              Navigate to key areas and account types
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
-              <Button variant="outline" className="h-auto p-4 flex-col space-y-2">
-                <Plus className="h-6 w-6" />
-                <span>Create Campaign</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-4">
+              <Button
+                variant="outline"
+                className="h-auto p-4 flex-col space-y-2 hover:bg-green-50 hover:border-green-200 dark:hover:bg-green-950/20"
+                onClick={() => navigate('/accounts?type=sponsored-ads')}
+              >
+                <Target className="h-6 w-6 text-green-600" />
+                <span>Sponsored Ads</span>
+                <span className="text-xs text-muted-foreground">Campaigns & Keywords</span>
               </Button>
-              <Button variant="outline" className="h-auto p-4 flex-col space-y-2">
-                <Users className="h-6 w-6" />
-                <span>Manage Accounts</span>
+              <Button
+                variant="outline"
+                className="h-auto p-4 flex-col space-y-2 hover:bg-blue-50 hover:border-blue-200 dark:hover:bg-blue-950/20"
+                onClick={() => navigate('/accounts?type=dsp')}
+              >
+                <Database className="h-6 w-6 text-blue-600" />
+                <span>DSP</span>
+                <span className="text-xs text-muted-foreground">Programmatic Ads</span>
               </Button>
-              <Button variant="outline" className="h-auto p-4 flex-col space-y-2">
-                <BarChart3 className="h-6 w-6" />
-                <span>View Reports</span>
+              <Button
+                variant="outline"
+                className="h-auto p-4 flex-col space-y-2 hover:bg-purple-50 hover:border-purple-200 dark:hover:bg-purple-950/20"
+                onClick={() => navigate('/accounts?type=amc')}
+              >
+                <BarChart3 className="h-6 w-6 text-purple-600" />
+                <span>AMC</span>
+                <span className="text-xs text-muted-foreground">Analytics & Insights</span>
               </Button>
-              <Button variant="outline" className="h-auto p-4 flex-col space-y-2">
-                <Settings className="h-6 w-6" />
+              <Button
+                variant="outline"
+                className="h-auto p-4 flex-col space-y-2 hover:bg-orange-50 hover:border-orange-200 dark:hover:bg-orange-950/20"
+                onClick={() => navigate('/accounts')}
+              >
+                <Users className="h-6 w-6 text-orange-600" />
+                <span>All Accounts</span>
+                <span className="text-xs text-muted-foreground">Manage Connections</span>
+              </Button>
+              <Button
+                variant="outline"
+                className="h-auto p-4 flex-col space-y-2 hover:bg-slate-50 hover:border-slate-200 dark:hover:bg-slate-950/20"
+                onClick={() => navigate('/settings')}
+              >
+                <Settings className="h-6 w-6 text-slate-600" />
                 <span>Settings</span>
+                <span className="text-xs text-muted-foreground">Preferences</span>
+              </Button>
+              <Button
+                variant="outline"
+                className="h-auto p-4 flex-col space-y-2 hover:bg-indigo-50 hover:border-indigo-200 dark:hover:bg-indigo-950/20"
+                onClick={() => window.open('https://advertising.amazon.com', '_blank')}
+              >
+                <ShoppingCart className="h-6 w-6 text-indigo-600" />
+                <span>Amazon Ads</span>
+                <span className="text-xs text-muted-foreground">External Console</span>
               </Button>
             </div>
           </CardContent>

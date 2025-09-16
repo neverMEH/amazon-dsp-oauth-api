@@ -11,18 +11,26 @@ export interface Marketplace {
 
 export interface Account {
   id: string;
-  accountName: string;
-  accountId: string;
-  accountType: string;
+  accountName?: string;
+  account_name?: string;
+  accountId?: string;
+  amazon_account_id?: string;
+  accountType?: string;
+  account_type?: string;
   marketplace?: Marketplace;
   marketplaceId?: string;
+  marketplace_id?: string;
   marketplaceName?: string;
+  marketplace_name?: string;
   status: AccountStatus;
   tokenExpiresAt?: string | null;
   lastRefreshTime?: string | null;
   createdAt: string;
+  connected_at?: string;
   updatedAt: string;
+  last_synced_at?: string;
   isDefault?: boolean;
+  is_default?: boolean;
   profileDetails?: ProfileDetails;
   metadata?: any;
 }

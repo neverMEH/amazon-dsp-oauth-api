@@ -1,9 +1,9 @@
 import { Account, Stats } from '@/stores/dashboard'
 
 // Use relative URL in production (same domain), localhost for development
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
-  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-    ? 'http://localhost:8000' 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ||
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:8000'
     : '')  // Empty string means use relative URLs (same domain)
 
 export interface UserProfile {
