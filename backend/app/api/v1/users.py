@@ -254,6 +254,60 @@ async def get_current_user_with_accounts(
         )
 
 
+@router.get("/me/stats", response_model=Dict[str, Any])
+async def get_current_user_stats(
+    request: Request,
+    current_user: Dict[str, Any] = Depends(RequireAuth)
+):
+    """
+    Get current user's statistics
+
+    Returns:
+        User statistics including account counts and campaign metrics
+    """
+    try:
+        user_context = get_user_context(current_user)
+        clerk_user_id = user_context["clerk_user_id"]
+
+        # Get user from database
+        user = await user_service.get_user_by_clerk_id(clerk_user_id)
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+
+        # Get user's Amazon accounts for statistics
+        accounts = await account_service.get_user_accounts(user.id)
+
+        # Calculate statistics
+        total_accounts = len(accounts)
+        active_accounts = len([a for a in accounts if a.status == "active"])
+
+        # Return statistics
+        # Note: Campaign metrics would come from Amazon API integration
+        # For now, returning basic account statistics
+        return {
+            "totalAccounts": total_accounts,
+            "activeAccounts": active_accounts,
+            "totalCampaigns": 0,  # Would need Amazon API call
+            "totalSpend": 0,  # Would need Amazon API call
+            "impressions": 0,  # Would need Amazon API call
+            "clicks": 0,  # Would need Amazon API call
+            "conversions": 0  # Would need Amazon API call
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting user stats: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error"
+        )
+
+
 @router.get("/session", response_model=Dict[str, Any])
 async def get_session_info(
     request: Request,
@@ -261,14 +315,14 @@ async def get_session_info(
 ):
     """
     Get current session information
-    
+
     Returns:
         Session information and authentication status
     """
     try:
         if current_user:
             user_context = get_user_context(current_user)
-            
+
             return {
                 "authenticated": True,
                 "user": user_context,
@@ -282,7 +336,7 @@ async def get_session_info(
                 "session_id": None,
                 "auth_time": None
             }
-            
+
     except Exception as e:
         logger.error(f"Error getting session info: {str(e)}")
         return {
