@@ -44,12 +44,12 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
   - [x] 4.6 Add error boundary and retry logic
   - [x] 4.7 Verify all integration tests pass
 
-- [ ] 5. End-to-End Testing and Documentation
-  - [ ] 5.1 Write end-to-end test scenarios for DSP seats workflow
-  - [ ] 5.2 Test complete flow: authentication → seats retrieval → display
-  - [ ] 5.3 Verify pagination and filtering functionality
-  - [ ] 5.4 Test error scenarios and rate limiting behavior
-  - [ ] 5.5 Update CLAUDE.md with DSP seats feature documentation
-  - [ ] 5.6 Add DSP seats examples to API documentation
-  - [ ] 5.7 Perform final integration testing across all components
-  - [ ] 5.8 Verify all tests pass and feature is production-ready
+- [x] 5. End-to-End Testing and Documentation
+  - [x] 5.1 Write end-to-end test scenarios for DSP seats workflow
+  - [x] 5.2 Test complete flow: authentication → seats retrieval → display
+  - [x] 5.3 Verify pagination and filtering functionality
+  - [x] 5.4 Test error scenarios and rate limiting behavior
+  - [x] 5.5 Update CLAUDE.md with DSP seats feature documentation
+  - [x] 5.6 Add DSP seats examples to API documentation
+  - [x] 5.7 Perform final integration testing across all components
+  - [x] 5.8 Verify all tests pass and feature is production-ready

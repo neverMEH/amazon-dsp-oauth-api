@@ -72,9 +72,16 @@ python test_auth_status.py
 ### Frontend Structure
 - **src/components/** - Reusable React components using shadcn/ui
   - **account/AccountTable.tsx** - Table view with sortable columns, status indicators, and inline actions
-  - **account/AccountManagementPage.tsx** - Main accounts page (table-only view as of latest update)
+  - **account/AccountManagementPage.tsx** - Main accounts page with tabbed interface including DSP seats
+  - **account/DSPSeatsTab.tsx** - DSP seats management component with filtering and pagination
+    - Exchange filtering with multi-select dropdown
+    - Pagination controls with configurable page size
+    - Sync status indicators and last update timestamps
+    - Manual refresh button with loading states
+    - Empty and error state handling
 - **src/pages/** - Page components (Dashboard, Settings, Accounts)
 - **src/services/** - API client services
+  - **dspSeatsService.ts** - DSP seats API client with TypeScript types and 5-minute TTL caching
 - **src/stores/** - Zustand state management
 - **src/hooks/** - Custom React hooks
 - **src/types/** - TypeScript type definitions
@@ -112,6 +119,11 @@ python test_auth_status.py
 - **DSP Campaign Insights API** (`/dsp/campaigns`)
   - Requires advertiser_id parameter
   - Returns campaign performance metrics
+- **DSP Advertiser Seats API** (`POST /dsp/v1/seats/advertisers/current/list`)
+  - Lists seat allocations across advertising exchanges for DSP advertisers
+  - Supports filtering by exchange IDs and pagination (1-200 seats per request)
+  - Returns seat metadata including dealCreationId and spendTrackingId
+  - Integrated with rate limiting and exponential backoff retry logic
 - **Legacy Profiles API v2** (`GET /v2/profiles`)
   - Backwards compatibility endpoint
   - Missing pagination implementation (known issue)
@@ -146,7 +158,8 @@ python test_auth_status.py
 - `status`: VARCHAR(50) - 'active', 'inactive', 'suspended', 'pending'
 - `connected_at`: TIMESTAMP
 - `last_synced_at`: TIMESTAMP
-- `metadata`: JSONB - Stores countryCodes, alternateIds, errors from API
+- `metadata`: JSONB - Stores countryCodes, alternateIds, errors from API, and DSP seats_metadata
+- `seats_metadata`: JSONB - DSP seat information including exchange mappings and sync timestamps
 
 #### oauth_tokens
 - `id`: UUID (Primary Key)
@@ -164,6 +177,14 @@ python test_auth_status.py
 - **auth_audit_log** - Authentication event tracking with IP and user agent
 - **application_config** - Dynamic configuration (refresh intervals, retry settings)
 - **rate_limit_buckets** - API rate limiting per endpoint
+- **dsp_seats_sync_log** - DSP seats synchronization history and audit trail
+  - `id`: UUID (Primary Key)
+  - `advertiser_id`: VARCHAR(255) - DSP advertiser ID
+  - `sync_status`: VARCHAR(50) - 'success', 'failed', 'in_progress'
+  - `seats_retrieved`: INTEGER - Number of seats retrieved
+  - `exchanges_count`: INTEGER - Number of exchanges with seats
+  - `error_message`: TEXT - Error details if sync failed
+  - `created_at`: TIMESTAMP WITH TIME ZONE
 
 ## API Endpoints
 
@@ -178,6 +199,18 @@ python test_auth_status.py
 - `GET /api/v1/accounts/amazon-profiles` - Legacy profiles endpoint
 - `GET /api/v1/accounts/{id}/campaigns` - Get DSP campaigns
 - `POST /api/v1/accounts/{id}/batch` - Batch account operations
+
+### DSP Seats API
+- `GET /api/v1/accounts/dsp/{advertiser_id}/seats` - Get DSP advertiser seats
+  - Query parameters: `exchange_ids[]`, `max_results` (1-200), `next_token`, `profile_id`
+  - Returns seat information with exchange mappings and deal/spend tracking IDs
+  - Supports pagination and filtering by exchange IDs
+- `POST /api/v1/accounts/dsp/{advertiser_id}/seats/refresh` - Force refresh seats data
+  - Body: `{"force": true, "include_sync_log": true}`
+  - Creates sync log entry and updates cached seat information
+- `GET /api/v1/accounts/dsp/{advertiser_id}/seats/sync-history` - Get sync history
+  - Query parameters: `limit`, `offset`, `status_filter` (success/failed/partial)
+  - Returns paginated sync history with timestamps and error details
 
 ### User Management
 - `GET /api/v1/users/me` - Current user profile

@@ -4,6 +4,14 @@ from unittest.mock import patch, MagicMock, AsyncMock
 from datetime import datetime, timezone
 import json
 
+from app.main import app
+
+
+@pytest.fixture
+def test_client():
+    """Test client fixture for FastAPI app"""
+    return TestClient(app)
+
 
 @pytest.mark.asyncio
 async def test_get_dsp_advertiser_seats_success(test_client: TestClient):
