@@ -70,7 +70,11 @@
       "mcp__supabase__search_docs",
       "Bash(timeout 30s npm test -- --run DSPSeatsTab.test.tsx)",
       "Bash(pytest tests/ -v)",
-      "Bash(pytest:*)"
+      "Bash(pytest:*)",
+      "Bash(gh pr list:*)",
+      "Bash(paplay:*)",
+      "Bash(aplay:*)",
+      "Bash(afplay:*)"
     ],
     "deny": [],
     "ask": []

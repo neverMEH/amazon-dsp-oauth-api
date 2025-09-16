@@ -107,8 +107,8 @@ class TestDSPSeatsE2EWorkflow:
         E2E Test Scenario 1: Complete successful workflow
         Tests: Authentication → Account lookup → Token validation → Seats retrieval → Display
         """
-        with patch("app.api.v1.accounts.RequireAuth") as mock_auth:
-            mock_auth.return_value = lambda: mock_auth_user
+        with patch("app.middleware.clerk_auth.clerk_middleware.get_current_user", new_callable=AsyncMock) as mock_auth:
+            mock_auth.return_value = mock_auth_user
 
             with patch("app.api.v1.accounts.get_supabase_service_client") as mock_supabase:
                 mock_client = MagicMock()
@@ -202,8 +202,8 @@ class TestDSPSeatsE2EWorkflow:
         E2E Test Scenario 3: Account not found workflow
         Tests: Valid auth → Account lookup failure → Error response
         """
-        with patch("app.api.v1.accounts.RequireAuth") as mock_auth:
-            mock_auth.return_value = lambda: mock_auth_user
+        with patch("app.middleware.clerk_auth.clerk_middleware.get_current_user", new_callable=AsyncMock) as mock_auth:
+            mock_auth.return_value = mock_auth_user
 
             with patch("app.api.v1.accounts.get_supabase_service_client") as mock_supabase:
                 mock_client = MagicMock()
@@ -247,8 +247,8 @@ class TestDSPSeatsE2EWorkflow:
             "expires_at": (datetime.now(timezone.utc).timestamp() + 3600)  # Valid for 1 hour
         }
 
-        with patch("app.api.v1.accounts.RequireAuth") as mock_auth:
-            mock_auth.return_value = lambda: mock_auth_user
+        with patch("app.middleware.clerk_auth.clerk_middleware.get_current_user", new_callable=AsyncMock) as mock_auth:
+            mock_auth.return_value = mock_auth_user
 
             with patch("app.api.v1.accounts.get_supabase_service_client") as mock_supabase:
                 mock_client = MagicMock()
@@ -319,8 +319,8 @@ class TestDSPSeatsE2EWorkflow:
             "nextToken": "next_page_token_123"
         }
 
-        with patch("app.api.v1.accounts.RequireAuth") as mock_auth:
-            mock_auth.return_value = lambda: mock_auth_user
+        with patch("app.middleware.clerk_auth.clerk_middleware.get_current_user", new_callable=AsyncMock) as mock_auth:
+            mock_auth.return_value = mock_auth_user
 
             with patch("app.api.v1.accounts.get_supabase_service_client") as mock_supabase:
                 mock_client = MagicMock()
@@ -375,8 +375,8 @@ class TestDSPSeatsE2EWorkflow:
         E2E Test Scenario 6: Manual refresh workflow
         Tests: Auth → Force refresh → Database update → Sync log creation
         """
-        with patch("app.api.v1.accounts.RequireAuth") as mock_auth:
-            mock_auth.return_value = lambda: mock_auth_user
+        with patch("app.middleware.clerk_auth.clerk_middleware.get_current_user", new_callable=AsyncMock) as mock_auth:
+            mock_auth.return_value = mock_auth_user
 
             with patch("app.api.v1.accounts.get_supabase_service_client") as mock_supabase:
                 mock_client = MagicMock()
@@ -446,8 +446,8 @@ class TestDSPSeatsE2EWorkflow:
             }
         ]
 
-        with patch("app.api.v1.accounts.RequireAuth") as mock_auth:
-            mock_auth.return_value = lambda: mock_auth_user
+        with patch("app.middleware.clerk_auth.clerk_middleware.get_current_user", new_callable=AsyncMock) as mock_auth:
+            mock_auth.return_value = mock_auth_user
 
             with patch("app.api.v1.accounts.get_supabase_service_client") as mock_supabase:
                 mock_client = MagicMock()
@@ -502,8 +502,8 @@ class TestDSPSeatsErrorScenarios:
         }
         mock_token = {"access_token": "valid_token"}
 
-        with patch("app.api.v1.accounts.RequireAuth") as mock_auth:
-            mock_auth.return_value = lambda: mock_user
+        with patch("app.middleware.clerk_auth.clerk_middleware.get_current_user", new_callable=AsyncMock) as mock_auth:
+            mock_auth.return_value = mock_user
 
             with patch("app.api.v1.accounts.get_supabase_service_client") as mock_supabase:
                 mock_client = MagicMock()
@@ -547,8 +547,8 @@ class TestDSPSeatsErrorScenarios:
         }
         mock_token = {"access_token": "expired_token"}
 
-        with patch("app.api.v1.accounts.RequireAuth") as mock_auth:
-            mock_auth.return_value = lambda: mock_user
+        with patch("app.middleware.clerk_auth.clerk_middleware.get_current_user", new_callable=AsyncMock) as mock_auth:
+            mock_auth.return_value = mock_user
 
             with patch("app.api.v1.accounts.get_supabase_service_client") as mock_supabase:
                 mock_client = MagicMock()
@@ -591,8 +591,8 @@ class TestDSPSeatsErrorScenarios:
         }
         mock_token = {"access_token": "valid_token"}
 
-        with patch("app.api.v1.accounts.RequireAuth") as mock_auth:
-            mock_auth.return_value = lambda: mock_user
+        with patch("app.middleware.clerk_auth.clerk_middleware.get_current_user", new_callable=AsyncMock) as mock_auth:
+            mock_auth.return_value = mock_user
 
             with patch("app.api.v1.accounts.get_supabase_service_client") as mock_supabase:
                 mock_client = MagicMock()
