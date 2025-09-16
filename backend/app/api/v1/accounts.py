@@ -232,8 +232,11 @@ async def get_dsp_accounts(
             logger.warning(f"No OAuth token found for user {user_id}")
             return {"accounts": [], "total_count": 0, "message": "No authentication found"}
 
-        # Get access token
-        access_token = oauth_token.get("access_token")
+        # Refresh token if needed
+        refreshed_token = await refresh_token_if_needed(user_id, oauth_token, supabase)
+
+        # Get access token from refreshed token
+        access_token = refreshed_token.get("access_token")
 
         # Fetch DSP advertisers from service
         dsp_accounts = await dsp_amc_service.list_dsp_advertisers(access_token)
@@ -298,8 +301,11 @@ async def get_amc_instances(
             logger.warning(f"No OAuth token found for user {user_id}")
             return {"instances": [], "message": "No authentication found"}
 
-        # Get access token
-        access_token = oauth_token.get("access_token")
+        # Refresh token if needed
+        refreshed_token = await refresh_token_if_needed(user_id, oauth_token, supabase)
+
+        # Get access token from refreshed token
+        access_token = refreshed_token.get("access_token")
 
         # Fetch AMC instances from service
         amc_instances = await dsp_amc_service.list_amc_instances(access_token)

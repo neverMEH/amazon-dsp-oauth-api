@@ -54,7 +54,11 @@
       "Bash(grep:*)",
       "Bash(uvicorn:*)",
       "Bash(npm run typecheck:*)",
-      "Bash(npm ls:*)"
+      "Bash(npm ls:*)",
+      "Bash(npm run test:*)",
+      "Bash(npm test -- --testPathPattern=\"src/components/account/(AccountTypeTabs|AccountManagementPage|AccountTypeTable)\\.test\\.tsx\" --verbose --no-watch)",
+      "Bash(git branch:*)",
+      "Bash(gh api:*)"
     ],
     "deny": [],
     "ask": []
