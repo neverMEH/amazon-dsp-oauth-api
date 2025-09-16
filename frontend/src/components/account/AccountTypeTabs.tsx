@@ -4,10 +4,12 @@ import { useQuery } from '@tanstack/react-query';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertCircle, Shield, Database, BarChart3 } from 'lucide-react';
+import { AlertCircle, Shield, Database, BarChart3, ChevronLeft } from 'lucide-react';
 import { AccountTypeTable } from './AccountTypeTable';
+import { DSPSeatsTab } from './DSPSeatsTab';
 import { accountService } from '@/services/accountService';
 import { useToast } from '@/components/ui/use-toast';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 export type AccountType = 'sponsored-ads' | 'dsp' | 'amc';
@@ -29,6 +31,7 @@ export const AccountTypeTabs: React.FC<AccountTypeTabsProps> = ({
     const typeParam = searchParams.get('type') as AccountType;
     return ['sponsored-ads', 'dsp', 'amc'].includes(typeParam) ? typeParam : 'sponsored-ads';
   });
+  const [selectedDSPAccount, setSelectedDSPAccount] = useState<any>(null);
 
   // Query for Sponsored Ads accounts
   const sponsoredAdsQuery = useQuery({
@@ -90,7 +93,10 @@ export const AccountTypeTabs: React.FC<AccountTypeTabsProps> = ({
   };
 
   const handleViewDetails = (account: any) => {
-    if (onAccountSelect) {
+    if (activeTab === 'dsp' && account.amazon_account_id) {
+      // For DSP accounts, show the seats tab instead of details modal
+      setSelectedDSPAccount(account);
+    } else if (onAccountSelect) {
       onAccountSelect(account);
     }
   };
@@ -276,7 +282,32 @@ export const AccountTypeTabs: React.FC<AccountTypeTabsProps> = ({
           className="mt-4 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           data-testid="dsp-content"
         >
-          {renderTabContent('dsp')}
+          {selectedDSPAccount ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-4 pb-4 border-b">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedDSPAccount(null)}
+                  className="gap-2"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Back to DSP Accounts
+                </Button>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold">
+                    {selectedDSPAccount.account_name || 'DSP Account'}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Advertiser ID: {selectedDSPAccount.amazon_account_id}
+                  </p>
+                </div>
+              </div>
+              <DSPSeatsTab advertiserId={selectedDSPAccount.amazon_account_id} />
+            </div>
+          ) : (
+            renderTabContent('dsp')
+          )}
         </TabsContent>
 
         <TabsContent

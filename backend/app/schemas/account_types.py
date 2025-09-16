@@ -200,6 +200,157 @@ class SetManagedResponse(BaseModel):
         }
 
 
+class DSPSeatInfo(BaseModel):
+    """Information about a DSP seat on an exchange"""
+    exchange_id: str = Field(..., description="Unique identifier of the exchange")
+    exchange_name: str = Field(..., description="Name of the exchange")
+    deal_creation_id: Optional[str] = Field(None, description="SeatId for buyer identification")
+    spend_tracking_id: Optional[str] = Field(None, description="SeatId for buyer tracking")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "exchange_id": "1",
+                "exchange_name": "Google Ad Manager",
+                "deal_creation_id": "DEAL-ABC-123",
+                "spend_tracking_id": "TRACK-XYZ-789"
+            }
+        }
+
+
+class DSPAdvertiserSeats(BaseModel):
+    """DSP advertiser seats information"""
+    advertiser_id: str = Field(..., description="DSP advertiser ID")
+    current_seats: List[DSPSeatInfo] = Field(..., description="Current seat allocations")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "advertiser_id": "123456789",
+                "current_seats": [
+                    {
+                        "exchange_id": "1",
+                        "exchange_name": "Google Ad Manager",
+                        "deal_creation_id": "DEAL-ABC-123",
+                        "spend_tracking_id": "TRACK-XYZ-789"
+                    }
+                ]
+            }
+        }
+
+
+class DSPSeatsResponse(BaseModel):
+    """Response for DSP Seats API"""
+    advertiser_seats: List[DSPAdvertiserSeats] = Field(..., alias="advertiserSeats", description="List of advertiser seats")
+    next_token: Optional[str] = Field(None, alias="nextToken", description="Pagination token")
+    timestamp: datetime = Field(..., description="Response timestamp")
+    cached: bool = Field(False, description="Whether response is from cache")
+
+    class Config:
+        populate_by_name = True
+        json_schema_extra = {
+            "example": {
+                "advertiserSeats": [
+                    {
+                        "advertiserId": "123456789",
+                        "currentSeats": [
+                            {
+                                "exchangeId": "1",
+                                "exchangeName": "Google Ad Manager",
+                                "dealCreationId": "DEAL-ABC-123",
+                                "spendTrackingId": "TRACK-XYZ-789"
+                            }
+                        ]
+                    }
+                ],
+                "nextToken": "eyJsYXN0S2V5IjoiMTIzIn0=",
+                "timestamp": "2025-09-16T10:30:00Z",
+                "cached": False
+            }
+        }
+
+
+class DSPSeatsRefreshRequest(BaseModel):
+    """Request to refresh DSP seats data"""
+    force: bool = Field(True, description="Force refresh bypassing cache")
+    include_sync_log: bool = Field(False, description="Include sync log entry in response")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "force": True,
+                "include_sync_log": False
+            }
+        }
+
+
+class DSPSeatsRefreshResponse(BaseModel):
+    """Response after refreshing DSP seats"""
+    success: bool = Field(..., description="Operation success status")
+    seats_updated: int = Field(..., description="Number of seats updated")
+    last_sync: datetime = Field(..., description="Timestamp of sync")
+    sync_log_id: Optional[str] = Field(None, description="Sync log entry ID")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "success": True,
+                "seats_updated": 5,
+                "last_sync": "2025-09-16T10:30:00Z",
+                "sync_log_id": "uuid-here"
+            }
+        }
+
+
+class DSPSyncHistoryEntry(BaseModel):
+    """Entry in DSP seats sync history"""
+    id: str = Field(..., description="Sync log ID")
+    sync_status: Literal["success", "failed", "partial"] = Field(..., description="Sync status")
+    seats_retrieved: int = Field(..., description="Number of seats retrieved")
+    exchanges_count: int = Field(..., description="Number of exchanges")
+    error_message: Optional[str] = Field(None, description="Error message if failed")
+    created_at: datetime = Field(..., description="Sync timestamp")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "id": "sync-log-uuid",
+                "sync_status": "success",
+                "seats_retrieved": 5,
+                "exchanges_count": 2,
+                "error_message": None,
+                "created_at": "2025-09-16T10:30:00Z"
+            }
+        }
+
+
+class DSPSyncHistoryResponse(BaseModel):
+    """Response for DSP seats sync history"""
+    sync_history: List[DSPSyncHistoryEntry] = Field(..., description="List of sync history entries")
+    total_count: int = Field(..., description="Total number of entries")
+    limit: int = Field(..., description="Page size")
+    offset: int = Field(..., description="Page offset")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "sync_history": [
+                    {
+                        "id": "sync-log-uuid",
+                        "sync_status": "success",
+                        "seats_retrieved": 5,
+                        "exchanges_count": 2,
+                        "error_message": None,
+                        "created_at": "2025-09-16T10:30:00Z"
+                    }
+                ],
+                "total_count": 25,
+                "limit": 10,
+                "offset": 0
+            }
+        }
+
+
 class AccountsSyncRequest(BaseModel):
     """Request to sync accounts from Amazon APIs"""
     account_types: List[AccountType] = Field(

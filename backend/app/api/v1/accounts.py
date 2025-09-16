@@ -15,8 +15,12 @@ from app.services.amazon_oauth_service import amazon_oauth_service
 from app.services.token_service import token_service
 from app.services.dsp_amc_service import dsp_amc_service
 from app.db.base import get_supabase_client, get_supabase_service_client
-from app.core.exceptions import TokenRefreshError, RateLimitError
+from app.core.exceptions import TokenRefreshError, RateLimitError, DSPSeatsError, MissingDSPAccessError
 from app.models.amazon_account import AmazonAccount
+from app.schemas.account_types import (
+    DSPSeatsResponse, DSPSeatsRefreshRequest, DSPSeatsRefreshResponse,
+    DSPSyncHistoryResponse, DSPSyncHistoryEntry
+)
 
 logger = structlog.get_logger()
 
@@ -1665,4 +1669,411 @@ async def manual_token_refresh(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Token refresh failed: {str(e)}"
+        )
+
+
+# ============================================================================
+# DSP SEATS ENDPOINTS
+# ============================================================================
+
+@router.get("/dsp/{advertiser_id}/seats")
+async def get_dsp_advertiser_seats(
+    advertiser_id: str = Path(..., description="DSP Advertiser ID"),
+    current_user: Dict = Depends(RequireAuth),
+    exchange_ids: Optional[List[str]] = Query(None, description="Filter by exchange IDs"),
+    max_results: int = Query(200, ge=1, le=200, description="Maximum results"),
+    next_token: Optional[str] = Query(None, description="Pagination token"),
+    profile_id: Optional[str] = Query(None, description="Optional profile ID filter")
+) -> Dict[str, Any]:
+    """
+    Get seat information for a DSP advertiser
+
+    **Endpoint Details:**
+    - Calls Amazon DSP Seats API: POST /dsp/v1/seats/advertisers/current/list
+    - Requires DSP advertiser access
+    - Returns seat allocations across exchanges
+
+    **Required Permissions:**
+    - Valid DSP advertiser ID
+    - advertising::dsp_campaigns scope
+
+    **Response Structure:**
+    {
+        "advertiserSeats": [...],
+        "nextToken": "string",
+        "timestamp": "ISO 8601",
+        "cached": false
+    }
+    """
+    supabase = get_supabase_service_client()
+    user_id = current_user.get("user_id")
+
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found in database"
+        )
+
+    try:
+        # Verify user owns this DSP advertiser
+        account_result = supabase.table("user_accounts").select("*").eq(
+            "user_id", user_id
+        ).eq(
+            "amazon_account_id", advertiser_id
+        ).eq(
+            "account_type", "dsp"
+        ).execute()
+
+        if not account_result.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="DSP advertiser not found or not owned by user"
+            )
+
+        # Get user's token
+        token_data = await get_user_token(user_id, supabase)
+        if not token_data:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="No Amazon account connected"
+            )
+
+        # Refresh token if needed
+        token_data = await refresh_token_if_needed(user_id, token_data, supabase)
+
+        # Call DSP Seats API
+        seats_data = await dsp_amc_service.list_advertiser_seats(
+            access_token=token_data["access_token"],
+            advertiser_id=advertiser_id,
+            exchange_ids=exchange_ids,
+            max_results=max_results,
+            next_token=next_token,
+            profile_id=profile_id
+        )
+
+        # Update database with seats information
+        if seats_data.get("advertiserSeats"):
+            seats_metadata = {
+                "exchanges": [],
+                "last_seats_sync": datetime.now(timezone.utc).isoformat(),
+                "total_seats": 0
+            }
+
+            for advertiser_seat in seats_data["advertiserSeats"]:
+                if advertiser_seat["advertiserId"] == advertiser_id:
+                    seats_metadata["exchanges"] = advertiser_seat.get("currentSeats", [])
+                    seats_metadata["total_seats"] = len(advertiser_seat.get("currentSeats", []))
+                    break
+
+            # Update account metadata
+            current_metadata = account_result.data[0].get("metadata", {})
+            current_metadata["seats"] = seats_metadata
+
+            supabase.table("user_accounts").update({
+                "seats_metadata": seats_metadata,
+                "last_synced_at": datetime.now(timezone.utc).isoformat()
+            }).eq("id", account_result.data[0]["id"]).execute()
+
+        logger.info(
+            "Successfully retrieved DSP advertiser seats",
+            user_id=user_id,
+            advertiser_id=advertiser_id,
+            seat_count=len(seats_data.get("advertiserSeats", []))
+        )
+
+        return {
+            **seats_data,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "cached": False
+        }
+
+    except HTTPException:
+        raise
+    except TokenRefreshError as e:
+        logger.error("Token refresh failed", user_id=user_id, error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token refresh failed. Please re-authenticate."
+        )
+    except RateLimitError as e:
+        return JSONResponse(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            content={"detail": f"Rate limit exceeded. Retry after {e.retry_after} seconds."},
+            headers={"Retry-After": str(e.retry_after)}
+        )
+    except Exception as e:
+        logger.error(
+            "Failed to get DSP advertiser seats",
+            user_id=user_id,
+            advertiser_id=advertiser_id,
+            error=str(e)
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve seats: {str(e)}"
+        )
+
+
+@router.post("/dsp/{advertiser_id}/seats/refresh", response_model=DSPSeatsRefreshResponse)
+async def refresh_dsp_seats(
+    advertiser_id: str = Path(..., description="DSP Advertiser ID"),
+    request: DSPSeatsRefreshRequest = Body(...),
+    current_user: Dict = Depends(RequireAuth)
+) -> DSPSeatsRefreshResponse:
+    """
+    Force refresh of seat data for a DSP advertiser, bypassing cache
+
+    **Purpose:**
+    - Manually trigger data updates
+    - Bypass cache for immediate freshness
+    - Useful after making changes in Amazon DSP console
+    """
+    supabase = get_supabase_service_client()
+    user_id = current_user.get("user_id")
+
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found in database"
+        )
+
+    try:
+        # Verify user owns this DSP advertiser
+        account_result = supabase.table("user_accounts").select("*").eq(
+            "user_id", user_id
+        ).eq(
+            "amazon_account_id", advertiser_id
+        ).eq(
+            "account_type", "dsp"
+        ).execute()
+
+        if not account_result.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="DSP advertiser not found or not owned by user"
+            )
+
+        # Check if sync is already in progress
+        recent_sync = supabase.table("dsp_seats_sync_log").select("*").eq(
+            "advertiser_id", advertiser_id
+        ).eq(
+            "sync_status", "in_progress"
+        ).gte(
+            "created_at",
+            (datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat()
+        ).execute()
+
+        if recent_sync.data:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Sync already in progress for this advertiser"
+            )
+
+        # Get user's token
+        token_data = await get_user_token(user_id, supabase)
+        if not token_data:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="No Amazon account connected"
+            )
+
+        # Force refresh token if requested
+        if request.force:
+            token_data = await refresh_token_if_needed(user_id, token_data, supabase)
+
+        # Call DSP Seats API
+        seats_data = await dsp_amc_service.list_advertiser_seats(
+            access_token=token_data["access_token"],
+            advertiser_id=advertiser_id
+        )
+
+        # Process seats data
+        seats_updated = 0
+        if seats_data.get("advertiserSeats"):
+            for advertiser_seat in seats_data["advertiserSeats"]:
+                if advertiser_seat["advertiserId"] == advertiser_id:
+                    seats_updated = len(advertiser_seat.get("currentSeats", []))
+                    break
+
+        # Log the sync
+        sync_log_entry = {
+            "user_account_id": account_result.data[0]["id"],
+            "advertiser_id": advertiser_id,
+            "sync_status": "success",
+            "seats_retrieved": seats_updated,
+            "exchanges_count": seats_updated,
+            "request_metadata": {"force": request.force},
+            "response_metadata": {"has_more": bool(seats_data.get("nextToken"))}
+        }
+
+        sync_log_result = supabase.table("dsp_seats_sync_log").insert(
+            sync_log_entry
+        ).execute()
+
+        sync_log_id = sync_log_result.data[0]["id"] if sync_log_result.data else None
+
+        # Update account metadata
+        seats_metadata = {
+            "exchanges": [],
+            "last_seats_sync": datetime.now(timezone.utc).isoformat(),
+            "total_seats": seats_updated,
+            "sync_status": "success"
+        }
+
+        if seats_data.get("advertiserSeats"):
+            for advertiser_seat in seats_data["advertiserSeats"]:
+                if advertiser_seat["advertiserId"] == advertiser_id:
+                    seats_metadata["exchanges"] = advertiser_seat.get("currentSeats", [])
+                    break
+
+        supabase.table("user_accounts").update({
+            "seats_metadata": seats_metadata,
+            "last_synced_at": datetime.now(timezone.utc).isoformat()
+        }).eq("id", account_result.data[0]["id"]).execute()
+
+        logger.info(
+            "Successfully refreshed DSP seats",
+            user_id=user_id,
+            advertiser_id=advertiser_id,
+            seats_updated=seats_updated
+        )
+
+        return DSPSeatsRefreshResponse(
+            success=True,
+            seats_updated=seats_updated,
+            last_sync=datetime.now(timezone.utc),
+            sync_log_id=sync_log_id if request.include_sync_log else None
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        # Log failed sync
+        try:
+            supabase.table("dsp_seats_sync_log").insert({
+                "user_account_id": account_result.data[0]["id"] if account_result.data else None,
+                "advertiser_id": advertiser_id,
+                "sync_status": "failed",
+                "seats_retrieved": 0,
+                "exchanges_count": 0,
+                "error_message": str(e)
+            }).execute()
+        except:
+            pass
+
+        logger.error(
+            "Failed to refresh DSP seats",
+            user_id=user_id,
+            advertiser_id=advertiser_id,
+            error=str(e)
+        )
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to refresh seats: {str(e)}"
+        )
+
+
+@router.get("/dsp/{advertiser_id}/seats/sync-history", response_model=DSPSyncHistoryResponse)
+async def get_dsp_seats_sync_history(
+    advertiser_id: str = Path(..., description="DSP Advertiser ID"),
+    current_user: Dict = Depends(RequireAuth),
+    limit: int = Query(10, ge=1, le=100, description="Number of records"),
+    offset: int = Query(0, ge=0, description="Pagination offset"),
+    status_filter: Optional[str] = Query(None, regex="^(success|failed|partial)$", description="Filter by sync status")
+) -> DSPSyncHistoryResponse:
+    """
+    Retrieve synchronization history for DSP seats data
+
+    **Purpose:**
+    - View sync history and patterns
+    - Debug sync issues
+    - Audit data refresh operations
+    """
+    supabase = get_supabase_service_client()
+    user_id = current_user.get("user_id")
+
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found in database"
+        )
+
+    try:
+        # Verify user owns this DSP advertiser
+        account_result = supabase.table("user_accounts").select("id").eq(
+            "user_id", user_id
+        ).eq(
+            "amazon_account_id", advertiser_id
+        ).eq(
+            "account_type", "dsp"
+        ).execute()
+
+        if not account_result.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="DSP advertiser not found or not owned by user"
+            )
+
+        account_id = account_result.data[0]["id"]
+
+        # Build query
+        query = supabase.table("dsp_seats_sync_log").select("*").eq(
+            "user_account_id", account_id
+        ).eq(
+            "advertiser_id", advertiser_id
+        )
+
+        # Apply status filter if provided
+        if status_filter:
+            query = query.eq("sync_status", status_filter)
+
+        # Get total count
+        count_result = query.execute()
+        total_count = len(count_result.data) if count_result.data else 0
+
+        # Get paginated results
+        sync_logs = query.order(
+            "created_at", desc=True
+        ).range(offset, offset + limit - 1).execute()
+
+        # Format response
+        sync_history = []
+        for log in sync_logs.data or []:
+            sync_history.append(DSPSyncHistoryEntry(
+                id=log["id"],
+                sync_status=log["sync_status"],
+                seats_retrieved=log["seats_retrieved"],
+                exchanges_count=log["exchanges_count"],
+                error_message=log.get("error_message"),
+                created_at=datetime.fromisoformat(log["created_at"].replace("Z", "+00:00"))
+            ))
+
+        logger.info(
+            "Retrieved DSP seats sync history",
+            user_id=user_id,
+            advertiser_id=advertiser_id,
+            records=len(sync_history)
+        )
+
+        return DSPSyncHistoryResponse(
+            sync_history=sync_history,
+            total_count=total_count,
+            limit=limit,
+            offset=offset
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            "Failed to get sync history",
+            user_id=user_id,
+            advertiser_id=advertiser_id,
+            error=str(e)
+        )
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve sync history: {str(e)}"
         )

@@ -1,0 +1,3 @@
+# Spec Summary (Lite)
+
+Implement DSP advertiser seats functionality to display seat allocations across advertising exchanges within the accounts section, enabling users to view their DSP seat identifiers for deal creation and spend tracking. The feature includes Amazon DSP Seats API integration, database schema extension for seat storage, and a dedicated DSP tab with filtering and pagination capabilities for managing exchange-specific seat information.
