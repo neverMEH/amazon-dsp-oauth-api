@@ -1752,6 +1752,10 @@ async def get_dsp_advertiser_seats(
         )
 
         # Update database with seats information
+        seats_count = 0
+        exchanges_count = 0
+        sync_status = "success"
+
         if seats_data.get("advertiserSeats"):
             seats_metadata = {
                 "exchanges": [],
@@ -1761,8 +1765,11 @@ async def get_dsp_advertiser_seats(
 
             for advertiser_seat in seats_data["advertiserSeats"]:
                 if advertiser_seat["advertiserId"] == advertiser_id:
-                    seats_metadata["exchanges"] = advertiser_seat.get("currentSeats", [])
-                    seats_metadata["total_seats"] = len(advertiser_seat.get("currentSeats", []))
+                    current_seats = advertiser_seat.get("currentSeats", [])
+                    seats_metadata["exchanges"] = current_seats
+                    seats_metadata["total_seats"] = len(current_seats)
+                    seats_count = len(current_seats)
+                    exchanges_count = len(set(seat.get("exchangeId") for seat in current_seats if seat.get("exchangeId")))
                     break
 
             # Update account metadata
@@ -1773,6 +1780,36 @@ async def get_dsp_advertiser_seats(
                 "seats_metadata": seats_metadata,
                 "last_synced_at": datetime.now(timezone.utc).isoformat()
             }).eq("id", account_result.data[0]["id"]).execute()
+        else:
+            sync_status = "partial" if seats_data.get("error") else "success"
+
+        # Log sync attempt in dsp_seats_sync_log
+        try:
+            supabase.table("dsp_seats_sync_log").insert({
+                "user_account_id": account_result.data[0]["id"],
+                "advertiser_id": advertiser_id,
+                "sync_status": sync_status,
+                "seats_retrieved": seats_count,
+                "exchanges_count": exchanges_count,
+                "error_message": seats_data.get("error") if sync_status != "success" else None,
+                "request_metadata": {
+                    "max_results": max_results,
+                    "next_token": next_token,
+                    "exchange_ids": exchange_ids,
+                    "profile_id": profile_id
+                },
+                "response_metadata": {
+                    "has_next_token": bool(seats_data.get("nextToken")),
+                    "advertiser_seats_count": len(seats_data.get("advertiserSeats", []))
+                }
+            }).execute()
+        except Exception as sync_log_error:
+            logger.warning(
+                "Failed to log DSP seats sync attempt",
+                user_id=user_id,
+                advertiser_id=advertiser_id,
+                error=str(sync_log_error)
+            )
 
         logger.info(
             "Successfully retrieved DSP advertiser seats",

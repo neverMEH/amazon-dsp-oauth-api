@@ -61,9 +61,6 @@ export const DSPSeatsTab: React.FC<DSPSeatsTabProps> = ({ advertiserId }) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Debug logging
-  console.log('DSPSeatsTab rendered with advertiserId:', advertiserId);
-
   // Fetch advertiser seats
   const {
     data: seatsData,
@@ -72,23 +69,12 @@ export const DSPSeatsTab: React.FC<DSPSeatsTabProps> = ({ advertiserId }) => {
     refetch
   } = useQuery({
     queryKey: ['dsp-seats', advertiserId, pageSize, nextToken, selectedExchanges],
-    queryFn: () => {
-      console.log('Fetching DSP seats for advertiser:', advertiserId);
-      return dspSeatsService.fetchAdvertiserSeats(advertiserId, {
-        maxResults: pageSize,
-        nextToken: nextToken || undefined,
-        exchangeIds: selectedExchanges.length > 0 ? selectedExchanges : undefined,
-      });
-    },
+    queryFn: () => dspSeatsService.fetchAdvertiserSeats(advertiserId, {
+      maxResults: pageSize,
+      nextToken: nextToken || undefined,
+      exchangeIds: selectedExchanges.length > 0 ? selectedExchanges : undefined,
+    }),
     staleTime: 5 * 60 * 1000, // 5 minutes
-  });
-
-  // Debug logging for query results
-  console.log('DSPSeatsTab query state:', {
-    isLoading,
-    error: error?.message || error,
-    seatsData,
-    advertiserId
   });
 
   // Refresh mutation

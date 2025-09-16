@@ -45,10 +45,7 @@ export const AccountTypeTabs: React.FC<AccountTypeTabsProps> = ({
   // Query for DSP accounts
   const dspQuery = useQuery({
     queryKey: ['accounts', 'dsp'],
-    queryFn: () => {
-      console.log('Fetching DSP accounts...');
-      return accountService.getDSPAccounts();
-    },
+    queryFn: () => accountService.getDSPAccounts(),
     enabled: activeTab === 'dsp',
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
@@ -96,15 +93,8 @@ export const AccountTypeTabs: React.FC<AccountTypeTabsProps> = ({
   };
 
   const handleViewDetails = (account: any) => {
-    console.log('AccountTypeTabs.handleViewDetails called with:', {
-      account,
-      activeTab,
-      amazon_account_id: account.amazon_account_id
-    });
-
     if (activeTab === 'dsp' && account.amazon_account_id) {
       // For DSP accounts, show the seats tab instead of details modal
-      console.log('Setting selected DSP account:', account);
       setSelectedDSPAccount(account);
     } else if (onAccountSelect) {
       onAccountSelect(account);
