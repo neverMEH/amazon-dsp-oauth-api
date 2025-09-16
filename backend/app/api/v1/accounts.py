@@ -222,8 +222,11 @@ async def get_dsp_accounts(
         user_id = current_user["user_id"]
         logger.info(f"Fetching DSP accounts for user {user_id}")
 
-        # Get token from token service
-        oauth_token = await token_service.get_user_token(user_id)
+        # Get Supabase client
+        supabase = get_supabase_client()
+
+        # Get token using the local helper function
+        oauth_token = await get_user_token(user_id, supabase)
 
         if not oauth_token:
             logger.warning(f"No OAuth token found for user {user_id}")
@@ -285,8 +288,11 @@ async def get_amc_instances(
         user_id = current_user["user_id"]
         logger.info(f"Fetching AMC instances for user {user_id}")
 
-        # Get token from token service
-        oauth_token = await token_service.get_user_token(user_id)
+        # Get Supabase client
+        supabase = get_supabase_client()
+
+        # Get token using the local helper function
+        oauth_token = await get_user_token(user_id, supabase)
 
         if not oauth_token:
             logger.warning(f"No OAuth token found for user {user_id}")
