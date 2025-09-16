@@ -137,12 +137,20 @@ class ClerkService:
             import base64
             try:
                 encoded_domain = parts[2]
+                # Remove trailing $ if present (it's part of Clerk's key format)
+                if encoded_domain.endswith('$'):
+                    encoded_domain = encoded_domain[:-1]
+
                 # Add padding if needed for base64 decoding
                 padding = 4 - len(encoded_domain) % 4
                 if padding != 4:
                     encoded_domain += '=' * padding
 
                 decoded = base64.b64decode(encoded_domain).decode('utf-8')
+                # Remove trailing $ from decoded domain if present
+                if decoded.endswith('$'):
+                    decoded = decoded[:-1]
+
                 # Extract just the subdomain (first part before .clerk.accounts.dev)
                 instance_id = decoded.split('.')[0]
                 logger.debug(f"Decoded domain: {decoded}, instance: {instance_id}")

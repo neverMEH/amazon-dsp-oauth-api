@@ -64,7 +64,8 @@
       "mcp__railway__deployment_list",
       "mcp__railway__deployment_logs",
       "mcp__railway__service_info",
-      "mcp__railway__list_service_variables"
+      "mcp__railway__list_service_variables",
+      "mcp__railway__deployment_status"
     ],
     "deny": [],
     "ask": []
