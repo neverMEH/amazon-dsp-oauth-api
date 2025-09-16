@@ -193,7 +193,9 @@ async def refresh_token_if_needed(user_id: str, token_data: Dict, supabase) -> D
 
 @router.get("/sponsored-ads")
 async def get_sponsored_ads_accounts(
-    current_user: Dict = Depends(RequireAuth)
+    current_user: Dict = Depends(RequireAuth),
+    next_token: Optional[str] = Query(None, description="Pagination token for next page"),
+    max_results: int = Query(100, ge=1, le=100, description="Maximum results per page")
 ) -> Dict[str, Any]:
     """
     Get Sponsored Ads accounts (alias for amazon-ads-accounts)
@@ -202,7 +204,7 @@ async def get_sponsored_ads_accounts(
         Dictionary containing advertising accounts
     """
     # Delegate to the main advertising accounts endpoint
-    return await list_amazon_advertising_accounts(current_user)
+    return await list_amazon_ads_accounts(current_user, next_token, max_results)
 
 
 @router.get("/dsp")
