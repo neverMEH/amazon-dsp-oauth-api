@@ -106,6 +106,8 @@ class DSPSeatsService {
     params?: DSPSeatsQueryParams
   ): Promise<DSPSeatsResponse> {
     try {
+      console.log('DSPSeatsService.fetchAdvertiserSeats called with:', { advertiserId, params });
+
       const queryParams = new URLSearchParams();
 
       if (params?.maxResults) {
@@ -126,7 +128,12 @@ class DSPSeatsService {
         queryParams.toString() ? `?${queryParams.toString()}` : ''
       }`;
 
-      return await this.fetchWithAuth(url);
+      console.log('DSPSeatsService making API call to:', url);
+
+      const result = await this.fetchWithAuth(url);
+      console.log('DSPSeatsService API response:', result);
+
+      return result;
     } catch (error) {
       console.error('Error fetching advertiser seats:', error);
       throw error;
