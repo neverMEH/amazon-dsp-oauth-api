@@ -74,31 +74,32 @@ export const AccountTypeTable: React.FC<AccountTypeTableProps> = ({
     switch (accountType) {
       case 'sponsored-ads':
         return [
-          { key: 'accountName', label: 'Account Name', sortable: true },
-          { key: 'profileId', label: 'Profile ID', sortable: true },
-          { key: 'entityId', label: 'Entity ID', sortable: true },
-          { key: 'marketplaces', label: 'Marketplaces', sortable: false },
-          { key: 'lastManagedAt', label: 'Last Managed', sortable: true },
+          { key: 'account_name', label: 'Account Name', sortable: true },
+          { key: 'amazon_account_id', label: 'Account ID', sortable: true },
+          { key: 'marketplace_name', label: 'Marketplace', sortable: true },
+          { key: 'connected_at', label: 'Connected', sortable: true },
+          { key: 'last_synced_at', label: 'Last Synced', sortable: true },
           { key: 'status', label: 'Status', sortable: true },
           { key: 'actions', label: 'Actions', sortable: false },
         ];
       case 'dsp':
         return [
-          { key: 'accountName', label: 'Account Name', sortable: true },
-          { key: 'entityId', label: 'Entity ID', sortable: true },
-          { key: 'profileId', label: 'Profile ID', sortable: true },
-          { key: 'marketplace', label: 'Marketplace', sortable: true },
-          { key: 'advertiserType', label: 'Advertiser Type', sortable: true },
+          { key: 'account_name', label: 'Account Name', sortable: true },
+          { key: 'amazon_account_id', label: 'Advertiser ID', sortable: true },
+          { key: 'marketplace_name', label: 'Marketplace', sortable: true },
+          { key: 'connected_at', label: 'Connected', sortable: true },
+          { key: 'last_synced_at', label: 'Last Synced', sortable: true },
           { key: 'status', label: 'Status', sortable: true },
           { key: 'actions', label: 'Actions', sortable: false },
         ];
       case 'amc':
         return [
-          { key: 'instanceName', label: 'Instance Name', sortable: true },
-          { key: 'associatedAccounts', label: 'Associated Accounts', sortable: false },
-          { key: 'audienceCount', label: 'Audiences', sortable: true },
-          { key: 'workflowStatus', label: 'Workflow Status', sortable: true },
-          { key: 'dataFreshness', label: 'Data Freshness', sortable: true },
+          { key: 'account_name', label: 'Instance Name', sortable: true },
+          { key: 'amazon_account_id', label: 'Instance ID', sortable: true },
+          { key: 'marketplace_name', label: 'Marketplace', sortable: true },
+          { key: 'connected_at', label: 'Connected', sortable: true },
+          { key: 'last_synced_at', label: 'Last Synced', sortable: true },
+          { key: 'status', label: 'Status', sortable: true },
           { key: 'actions', label: 'Actions', sortable: false },
         ];
     }
@@ -195,35 +196,22 @@ export const AccountTypeTable: React.FC<AccountTypeTableProps> = ({
 
   const renderCellContent = (account: any, column: string) => {
     switch (column) {
-      case 'marketplaces':
-        return account.marketplaces?.join(', ') || '-';
-      case 'lastManagedAt':
-        return account.lastManagedAt
-          ? format(new Date(account.lastManagedAt), 'MMM d, yyyy')
+      case 'connected_at':
+        return account.connected_at
+          ? format(new Date(account.connected_at), 'MMM d, yyyy')
           : '-';
-      case 'associatedAccounts':
-        const dspCount = account.associatedDSPAccounts?.length || 0;
-        const spCount = account.associatedSponsoredAdsAccounts?.length || 0;
-        return `${dspCount} DSP, ${spCount} SP`;
-      case 'audienceCount':
-        return `${account.audienceCount || 0} audiences`;
-      case 'campaignCount':
-        return account.campaignCount ? `${account.campaignCount} campaigns` : '-';
-      case 'activeKeywords':
-        return account.activeKeywords ? `${account.activeKeywords} keywords` : '-';
-      case 'dailySpend':
-        return account.dailySpend
-          ? `$${account.dailySpend.toLocaleString()}/day`
-          : '-';
-      case 'orderCount':
-        return account.orderCount ? `${account.orderCount} orders` : '-';
-      case 'activeLineItems':
-        return account.activeLineItems ? `${account.activeLineItems} line items` : '-';
-      case 'dspSpend':
-        return account.dspSpend ? `$${account.dspSpend.toLocaleString()}` : '-';
+      case 'last_synced_at':
+        return account.last_synced_at
+          ? format(new Date(account.last_synced_at), 'MMM d, yyyy HH:mm')
+          : 'Never';
       case 'status':
-      case 'workflowStatus':
-        return renderStatus(account[column]);
+        return renderStatus(account.status || 'active');
+      case 'marketplace_name':
+        // Extract marketplace info from metadata if available
+        if (account.metadata?.country_codes?.length > 0) {
+          return account.metadata.country_codes.join(', ');
+        }
+        return account.marketplace_name || account.marketplace_id || '-';
       default:
         return account[column] || '-';
     }

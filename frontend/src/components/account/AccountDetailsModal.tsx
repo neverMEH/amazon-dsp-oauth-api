@@ -447,7 +447,7 @@ export const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
                                 <TableCell>
                                   <div className="flex items-center gap-2">
                                     <code className="relative rounded bg-muted px-2 py-1 font-mono text-sm">
-                                      {account.accountId || 'N/A'}
+                                      {account.amazon_account_id || account.accountId || 'N/A'}
                                     </code>
                                     <span className="text-xs text-muted-foreground">(Shared)</span>
                                   </div>
@@ -486,7 +486,7 @@ export const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
                                 </TableCell>
                                 <TableCell>
                                   <code className="relative rounded bg-muted px-2 py-1 font-mono text-sm">
-                                    {account.accountId || 'N/A'}
+                                    {account.amazon_account_id || account.accountId || 'N/A'}
                                   </code>
                                 </TableCell>
                                 <TableCell className="text-right">
