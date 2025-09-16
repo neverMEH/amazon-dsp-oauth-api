@@ -191,6 +191,83 @@ async def refresh_token_if_needed(user_id: str, token_data: Dict, supabase) -> D
 # API ENDPOINTS
 # ============================================================================
 
+@router.get("/sponsored-ads")
+async def get_sponsored_ads_accounts(
+    current_user: Dict = Depends(RequireAuth)
+) -> Dict[str, Any]:
+    """
+    Get Sponsored Ads accounts (alias for amazon-ads-accounts)
+
+    Returns:
+        Dictionary containing advertising accounts
+    """
+    # Delegate to the main advertising accounts endpoint
+    return await list_amazon_advertising_accounts(current_user)
+
+
+@router.get("/dsp")
+async def get_dsp_accounts(
+    current_user: Dict = Depends(RequireAuth)
+) -> Dict[str, Any]:
+    """
+    Get DSP accounts for the current user
+
+    Returns:
+        Dictionary containing DSP accounts
+    """
+    try:
+        # Get user's OAuth token
+        user_id = current_user["user_id"]
+        logger.info(f"Fetching DSP accounts for user {user_id}")
+
+        # Get token from token service
+        oauth_token = await token_service.get_user_token(user_id)
+
+        if not oauth_token:
+            logger.warning(f"No OAuth token found for user {user_id}")
+            return {"accounts": [], "total_count": 0, "message": "No authentication found"}
+
+        # Get access token
+        access_token = oauth_token.get("access_token")
+
+        # Fetch DSP advertisers from service
+        dsp_accounts = await dsp_amc_service.list_dsp_advertisers(access_token)
+
+        logger.info(f"Retrieved {len(dsp_accounts)} DSP accounts")
+
+        return {
+            "accounts": dsp_accounts,
+            "total_count": len(dsp_accounts)
+        }
+
+    except TokenRefreshError as e:
+        logger.warning(f"Token refresh error: {str(e)}")
+        raise HTTPException(
+            status_code=401,
+            detail="Authentication token expired. Please re-authenticate."
+        )
+    except Exception as e:
+        logger.error(f"Error fetching DSP accounts: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to fetch DSP accounts: {str(e)}"
+        )
+
+
+@router.get("/amc")
+async def get_amc_accounts(
+    current_user: Dict = Depends(RequireAuth)
+) -> Dict[str, Any]:
+    """
+    Get AMC instances (alias for amc-instances)
+
+    Returns:
+        Dictionary containing AMC instances
+    """
+    # Delegate to the main AMC instances endpoint
+    return await get_amc_instances(current_user)
+
+
 @router.get("/amc-instances")
 async def get_amc_instances(
     current_user: Dict = Depends(RequireAuth)
