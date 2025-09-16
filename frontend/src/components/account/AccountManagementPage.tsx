@@ -193,9 +193,19 @@ export const AccountManagementPage: React.FC<AccountManagementPageProps> = ({
     };
 
     accounts.forEach(account => {
-      const status = account.status as AccountStatus;
-      if (status in counts) {
-        counts[status]++;
+      // Check the actual status field (could be 'status' or other variations)
+      const status = (account.status || 'active').toLowerCase();
+
+      // Map various status values to our three categories
+      if (status === 'active' || status === 'connected' || status === 'created' || !status) {
+        counts.active++;
+      } else if (status === 'error' || status === 'failed' || status === 'needs_attention') {
+        counts.error++;
+      } else if (status === 'disconnected' || status === 'disabled' || status === 'inactive') {
+        counts.disconnected++;
+      } else {
+        // Default to active for unknown statuses
+        counts.active++;
       }
     });
 

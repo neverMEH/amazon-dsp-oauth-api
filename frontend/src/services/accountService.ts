@@ -158,6 +158,23 @@ class AccountService {
 
   // Get account status (helper method)
   getAccountStatus(account: Account): AccountStatus {
+    // Check if account already has a valid status
+    if (account.status === 'active' || account.status === 'error' || account.status === 'disconnected') {
+      return account.status;
+    }
+
+    // For accounts from database, assume active if they exist
+    // The backend manages the actual token refresh
+    if (account.id && (account.amazon_account_id || account.accountId)) {
+      // If account has an explicit status field set, use it
+      if (account.status === 'inactive' || account.status === 'suspended') {
+        return 'disconnected';
+      }
+      // Default to active for connected accounts
+      return 'active';
+    }
+
+    // Legacy logic for backwards compatibility
     // If no token, account is disconnected
     if (!account.tokenExpiresAt) return 'disconnected';
 
