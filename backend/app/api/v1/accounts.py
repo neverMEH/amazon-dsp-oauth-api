@@ -198,13 +198,50 @@ async def get_sponsored_ads_accounts(
     max_results: int = Query(100, ge=1, le=100, description="Maximum results per page")
 ) -> Dict[str, Any]:
     """
-    Get Sponsored Ads accounts (alias for amazon-ads-accounts)
+    Get Sponsored Ads accounts filtered by account_type='advertising'
 
     Returns:
-        Dictionary containing advertising accounts
+        Dictionary containing advertising accounts from database
     """
-    # Delegate to the main advertising accounts endpoint
-    return await list_amazon_ads_accounts(current_user, next_token, max_results)
+    supabase = get_supabase_service_client()
+    user_context = current_user
+    user_id = user_context.get("user_id")
+
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found in database"
+        )
+
+    try:
+        # Query database for accounts with account_type='advertising'
+        result = supabase.table("user_accounts").select("*").eq(
+            "user_id", user_id
+        ).eq(
+            "account_type", "advertising"
+        ).execute()
+
+        accounts = []
+        if result.data:
+            for acc in result.data:
+                account_dict = AmazonAccount.from_dict(acc).to_dict()
+                # Add marketplace name
+                account_dict["marketplace_name"] = AmazonAccount.from_dict(acc).marketplace_name
+                accounts.append(account_dict)
+
+        logger.info(f"Retrieved {len(accounts)} sponsored ads accounts from database for user {user_id}")
+
+        return {
+            "accounts": accounts,
+            "total_count": len(accounts)
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to retrieve sponsored ads accounts: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve sponsored ads accounts: {str(e)}"
+        )
 
 
 @router.get("/dsp")
@@ -217,69 +254,44 @@ async def get_dsp_accounts(
     Returns:
         Dictionary containing DSP accounts
     """
+    supabase = get_supabase_service_client()
+    user_context = current_user
+    user_id = user_context.get("user_id")
+
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found in database"
+        )
+
     try:
-        # Get user's OAuth token
-        user_id = current_user.get("user_id")
-        clerk_user_id = current_user.get("sub") or current_user.get("clerk_user_id")
+        # Query database for accounts with account_type='dsp'
+        result = supabase.table("user_accounts").select("*").eq(
+            "user_id", user_id
+        ).eq(
+            "account_type", "dsp"
+        ).execute()
 
-        # Log the authentication context for debugging
-        logger.info(f"DSP endpoint called - user_id: {user_id}, clerk_user_id: {clerk_user_id}")
+        accounts = []
+        if result.data:
+            for acc in result.data:
+                account_dict = AmazonAccount.from_dict(acc).to_dict()
+                # Add marketplace name
+                account_dict["marketplace_name"] = AmazonAccount.from_dict(acc).marketplace_name
+                accounts.append(account_dict)
 
-        if not user_id:
-            # Try to get user by Clerk ID if database user_id is missing
-            if clerk_user_id:
-                from app.services.user_service import UserService
-                user_service = UserService()
-                user = await user_service.get_user_by_clerk_id(clerk_user_id)
-                if user:
-                    user_id = user.id
-                    logger.info(f"Found user by Clerk ID: {user_id}")
-                else:
-                    logger.warning(f"No user found for Clerk ID: {clerk_user_id}")
-                    return {"accounts": [], "total_count": 0, "message": "User not found in database"}
-            else:
-                logger.warning("No user_id or clerk_user_id available")
-                return {"accounts": [], "total_count": 0, "message": "User authentication incomplete"}
-
-        logger.info(f"Fetching DSP accounts for user {user_id}")
-
-        # Get Supabase client
-        supabase = get_supabase_client()
-
-        # Get token using the local helper function
-        oauth_token = await get_user_token(user_id, supabase)
-
-        if not oauth_token:
-            logger.warning(f"No OAuth token found for user {user_id}")
-            return {"accounts": [], "total_count": 0, "message": "No authentication found"}
-
-        # Refresh token if needed
-        refreshed_token = await refresh_token_if_needed(user_id, oauth_token, supabase)
-
-        # Get access token from refreshed token
-        access_token = refreshed_token.get("access_token")
-
-        # Fetch DSP advertisers from service
-        dsp_accounts = await dsp_amc_service.list_dsp_advertisers(access_token)
-
-        logger.info(f"Retrieved {len(dsp_accounts)} DSP accounts")
+        logger.info(f"Retrieved {len(accounts)} DSP accounts from database for user {user_id}")
 
         return {
-            "accounts": dsp_accounts,
-            "total_count": len(dsp_accounts)
+            "accounts": accounts,
+            "total_count": len(accounts)
         }
 
-    except TokenRefreshError as e:
-        logger.warning(f"Token refresh error: {str(e)}")
-        raise HTTPException(
-            status_code=401,
-            detail="Authentication token expired. Please re-authenticate."
-        )
     except Exception as e:
-        logger.error(f"Error fetching DSP accounts: {str(e)}")
+        logger.error(f"Failed to retrieve DSP accounts: {str(e)}")
         raise HTTPException(
-            status_code=500,
-            detail=f"Failed to fetch DSP accounts: {str(e)}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve DSP accounts: {str(e)}"
         )
 
 
@@ -288,13 +300,50 @@ async def get_amc_accounts(
     current_user: Dict = Depends(RequireAuth)
 ) -> Dict[str, Any]:
     """
-    Get AMC instances (alias for amc-instances)
+    Get AMC accounts filtered by account_type='amc'
 
     Returns:
-        Dictionary containing AMC instances
+        Dictionary containing AMC accounts from database
     """
-    # Delegate to the main AMC instances endpoint
-    return await get_amc_instances(current_user)
+    supabase = get_supabase_service_client()
+    user_context = current_user
+    user_id = user_context.get("user_id")
+
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found in database"
+        )
+
+    try:
+        # Query database for accounts with account_type='amc'
+        result = supabase.table("user_accounts").select("*").eq(
+            "user_id", user_id
+        ).eq(
+            "account_type", "amc"
+        ).execute()
+
+        instances = []
+        if result.data:
+            for acc in result.data:
+                account_dict = AmazonAccount.from_dict(acc).to_dict()
+                # Add marketplace name
+                account_dict["marketplace_name"] = AmazonAccount.from_dict(acc).marketplace_name
+                instances.append(account_dict)
+
+        logger.info(f"Retrieved {len(instances)} AMC accounts from database for user {user_id}")
+
+        return {
+            "instances": instances,
+            "total_count": len(instances)
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to retrieve AMC accounts: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve AMC accounts: {str(e)}"
+        )
 
 
 @router.get("/amc-instances")
@@ -307,69 +356,44 @@ async def get_amc_instances(
     Returns:
         Dictionary containing AMC instances
     """
+    supabase = get_supabase_service_client()
+    user_context = current_user
+    user_id = user_context.get("user_id")
+
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found in database"
+        )
+
     try:
-        # Get user's OAuth token
-        user_id = current_user.get("user_id")
-        clerk_user_id = current_user.get("sub") or current_user.get("clerk_user_id")
+        # Query database for accounts with account_type='amc'
+        result = supabase.table("user_accounts").select("*").eq(
+            "user_id", user_id
+        ).eq(
+            "account_type", "amc"
+        ).execute()
 
-        # Log the authentication context for debugging
-        logger.info(f"AMC endpoint called - user_id: {user_id}, clerk_user_id: {clerk_user_id}")
+        instances = []
+        if result.data:
+            for acc in result.data:
+                account_dict = AmazonAccount.from_dict(acc).to_dict()
+                # Add marketplace name
+                account_dict["marketplace_name"] = AmazonAccount.from_dict(acc).marketplace_name
+                instances.append(account_dict)
 
-        if not user_id:
-            # Try to get user by Clerk ID if database user_id is missing
-            if clerk_user_id:
-                from app.services.user_service import UserService
-                user_service = UserService()
-                user = await user_service.get_user_by_clerk_id(clerk_user_id)
-                if user:
-                    user_id = user.id
-                    logger.info(f"Found user by Clerk ID: {user_id}")
-                else:
-                    logger.warning(f"No user found for Clerk ID: {clerk_user_id}")
-                    return {"instances": [], "total_count": 0, "message": "User not found in database"}
-            else:
-                logger.warning("No user_id or clerk_user_id available")
-                return {"instances": [], "total_count": 0, "message": "User authentication incomplete"}
-
-        logger.info(f"Fetching AMC instances for user {user_id}")
-
-        # Get Supabase client
-        supabase = get_supabase_client()
-
-        # Get token using the local helper function
-        oauth_token = await get_user_token(user_id, supabase)
-
-        if not oauth_token:
-            logger.warning(f"No OAuth token found for user {user_id}")
-            return {"instances": [], "message": "No authentication found"}
-
-        # Refresh token if needed
-        refreshed_token = await refresh_token_if_needed(user_id, oauth_token, supabase)
-
-        # Get access token from refreshed token
-        access_token = refreshed_token.get("access_token")
-
-        # Fetch AMC instances from service
-        amc_instances = await dsp_amc_service.list_amc_instances(access_token)
-
-        logger.info(f"Retrieved {len(amc_instances)} AMC instances")
+        logger.info(f"Retrieved {len(instances)} AMC instances from database for user {user_id}")
 
         return {
-            "instances": amc_instances,
-            "total": len(amc_instances)
+            "instances": instances,
+            "total_count": len(instances)
         }
 
-    except TokenRefreshError as e:
-        logger.warning(f"Token refresh error: {str(e)}")
-        raise HTTPException(
-            status_code=401,
-            detail="Authentication token expired. Please re-authenticate."
-        )
     except Exception as e:
-        logger.error(f"Error fetching AMC instances: {str(e)}")
+        logger.error(f"Failed to retrieve AMC instances: {str(e)}")
         raise HTTPException(
-            status_code=500,
-            detail=f"Failed to fetch AMC instances: {str(e)}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve AMC instances: {str(e)}"
         )
 
 @router.get("/all-account-types")
