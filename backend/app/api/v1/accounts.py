@@ -219,7 +219,28 @@ async def get_dsp_accounts(
     """
     try:
         # Get user's OAuth token
-        user_id = current_user["user_id"]
+        user_id = current_user.get("user_id")
+        clerk_user_id = current_user.get("sub") or current_user.get("clerk_user_id")
+
+        # Log the authentication context for debugging
+        logger.info(f"DSP endpoint called - user_id: {user_id}, clerk_user_id: {clerk_user_id}")
+
+        if not user_id:
+            # Try to get user by Clerk ID if database user_id is missing
+            if clerk_user_id:
+                from app.services.user_service import UserService
+                user_service = UserService()
+                user = await user_service.get_user_by_clerk_id(clerk_user_id)
+                if user:
+                    user_id = user.id
+                    logger.info(f"Found user by Clerk ID: {user_id}")
+                else:
+                    logger.warning(f"No user found for Clerk ID: {clerk_user_id}")
+                    return {"accounts": [], "total_count": 0, "message": "User not found in database"}
+            else:
+                logger.warning("No user_id or clerk_user_id available")
+                return {"accounts": [], "total_count": 0, "message": "User authentication incomplete"}
+
         logger.info(f"Fetching DSP accounts for user {user_id}")
 
         # Get Supabase client
@@ -288,7 +309,28 @@ async def get_amc_instances(
     """
     try:
         # Get user's OAuth token
-        user_id = current_user["user_id"]
+        user_id = current_user.get("user_id")
+        clerk_user_id = current_user.get("sub") or current_user.get("clerk_user_id")
+
+        # Log the authentication context for debugging
+        logger.info(f"AMC endpoint called - user_id: {user_id}, clerk_user_id: {clerk_user_id}")
+
+        if not user_id:
+            # Try to get user by Clerk ID if database user_id is missing
+            if clerk_user_id:
+                from app.services.user_service import UserService
+                user_service = UserService()
+                user = await user_service.get_user_by_clerk_id(clerk_user_id)
+                if user:
+                    user_id = user.id
+                    logger.info(f"Found user by Clerk ID: {user_id}")
+                else:
+                    logger.warning(f"No user found for Clerk ID: {clerk_user_id}")
+                    return {"instances": [], "total_count": 0, "message": "User not found in database"}
+            else:
+                logger.warning("No user_id or clerk_user_id available")
+                return {"instances": [], "total_count": 0, "message": "User authentication incomplete"}
+
         logger.info(f"Fetching AMC instances for user {user_id}")
 
         # Get Supabase client

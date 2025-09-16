@@ -58,7 +58,13 @@
       "Bash(npm run test:*)",
       "Bash(npm test -- --testPathPattern=\"src/components/account/(AccountTypeTabs|AccountManagementPage|AccountTypeTable)\\.test\\.tsx\" --verbose --no-watch)",
       "Bash(git branch:*)",
-      "Bash(gh api:*)"
+      "Bash(gh api:*)",
+      "mcp__railway__project_list",
+      "mcp__railway__configure_api_token",
+      "mcp__railway__deployment_list",
+      "mcp__railway__deployment_logs",
+      "mcp__railway__service_info",
+      "mcp__railway__list_service_variables"
     ],
     "deny": [],
     "ask": []
