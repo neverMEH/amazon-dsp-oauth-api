@@ -146,9 +146,9 @@ export const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
               <User className="h-5 w-5 text-primary" />
             </div>
             <div className="flex-1">
-              <span>{account.accountName || 'Unknown Account'}</span>
+              <span>{account.account_name || account.accountName || 'Unknown Account'}</span>
               <Badge variant="outline" className="ml-3 font-normal">
-                {account.accountType || 'advertising'}
+                {account.account_type || account.accountType || 'advertising'}
               </Badge>
             </div>
           </DialogTitle>
@@ -156,7 +156,7 @@ export const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
             <span className="inline-flex items-center gap-1.5">
               <Hash className="h-3.5 w-3.5 text-muted-foreground" />
               <code className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">
-                {account.accountId || 'N/A'}
+                {account.amazon_account_id || account.accountId || 'N/A'}
               </code>
             </span>
             {account.metadata?.region && (
@@ -190,6 +190,58 @@ export const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
             <TabsContent value="overview" className="flex-1 overflow-auto mt-6 space-y-6">
               <ScrollArea className="h-full pr-4">
                 <div className="space-y-6">
+                  {/* Primary Account Information */}
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Account Name */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+                          <Building className="h-3.5 w-3.5" />
+                          Account Name
+                        </label>
+                        <p className="text-base font-semibold">
+                          {account.account_name || account.accountName || 'Unknown Account'}
+                        </p>
+                      </div>
+
+                      {/* Account ID */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+                          <Hash className="h-3.5 w-3.5" />
+                          Account ID
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <code className="text-base font-mono bg-muted px-2 py-1 rounded">
+                            {account.amazon_account_id || account.accountId || 'N/A'}
+                          </code>
+                          {(account.amazon_account_id || account.accountId) && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7"
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(account.amazon_account_id || account.accountId || '');
+                                      toast({
+                                        description: "Account ID copied to clipboard",
+                                      });
+                                    }}
+                                  >
+                                    <Copy className="h-3.5 w-3.5" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Copy Account ID</TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <Separator />
+                  </div>
+
                   {/* Account Information Grid */}
                   <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
                     {/* Account Status */}
@@ -209,10 +261,10 @@ export const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
                       <label className="text-sm font-medium text-muted-foreground">Default Account</label>
                       <div>
                         <Badge
-                          variant={account.isDefault ? "default" : "secondary"}
+                          variant={(account.is_default || account.isDefault) ? "default" : "secondary"}
                           className="font-medium"
                         >
-                          {account.isDefault ? "Default" : "Secondary"}
+                          {(account.is_default || account.isDefault) ? "Default" : "Secondary"}
                         </Badge>
                       </div>
                     </div>
@@ -224,7 +276,7 @@ export const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
                         Region
                       </label>
                       <p className="text-sm font-medium">
-                        {account.marketplace?.region || account.metadata?.region || 'Unknown'}
+                        {account.marketplace_name || account.marketplace?.region || account.metadata?.region || 'Unknown'}
                       </p>
                     </div>
 
@@ -261,7 +313,7 @@ export const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
                         Connected Since
                       </label>
                       <p className="text-sm font-medium">
-                        {new Date(account.createdAt).toLocaleDateString()}
+                        {new Date(account.connected_at || account.createdAt).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
