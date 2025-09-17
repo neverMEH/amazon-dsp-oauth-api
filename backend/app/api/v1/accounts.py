@@ -2314,28 +2314,22 @@ async def add_sponsored_ads_accounts(
     current_user: Dict[str, Any] = Depends(RequireAuth)
 ):
     """
-    Add Sponsored Ads accounts using existing OAuth tokens or initiate OAuth if needed
+    Add Sponsored Ads accounts from Amazon API
 
-    Flow:
-    1. Check if user has valid OAuth tokens
-    2. If no tokens, return OAuth URL for authentication
-    3. If tokens exist, fetch accounts from Amazon API and store them
+    This endpoint assumes the user has already completed OAuth authentication
+    through the standard OAuth flow. It fetches Sponsored Ads accounts from
+    the Amazon API and stores them in the database.
     """
     try:
         user_id = current_user.get("user_id") or current_user.get("id")
 
-        # Check for existing tokens for this user
+        # Get the user's existing OAuth tokens
         token_info = await token_service.get_active_token(user_id=user_id)
 
         if not token_info:
-            # No tokens - initiate OAuth
-            auth_url, state = amazon_oauth_service.generate_oauth_url()
-            await token_service.store_state_token(state, auth_url)
-
-            return AddSponsoredAdsResponse(
-                requires_auth=True,
-                auth_url=auth_url,
-                state=state
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="No OAuth tokens found. Please complete OAuth authentication first."
             )
 
         # Check if token is expired
@@ -2343,17 +2337,19 @@ async def add_sponsored_ads_accounts(
             token_info["expires_at"].replace("Z", "+00:00")
         )
         if expires_at <= datetime.now(timezone.utc):
-            # Token expired - need re-auth
-            auth_url, state = amazon_oauth_service.generate_oauth_url()
-            await token_service.store_state_token(state, auth_url)
+            # Try to refresh the token
+            try:
+                from app.services.refresh_service import refresh_service
+                refreshed = await refresh_service.refresh_token(token_info["refresh_token"])
+                token_info = await token_service.get_active_token(user_id=user_id)
+            except Exception as refresh_error:
+                logger.error("Failed to refresh expired token", error=str(refresh_error))
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="OAuth token expired. Please re-authenticate."
+                )
 
-            return AddSponsoredAdsResponse(
-                requires_auth=True,
-                auth_url=auth_url,
-                state=state
-            )
-
-        # We have valid tokens - fetch and store accounts
+        # Fetch and store Sponsored Ads accounts
         result = await account_service.fetch_and_store_sponsored_ads(
             user_id=user_id,
             access_token=token_info["access_token"]
@@ -2382,51 +2378,42 @@ async def add_dsp_advertisers(
     current_user: Dict[str, Any] = Depends(RequireAuth)
 ):
     """
-    Add DSP advertisers using existing OAuth tokens or initiate OAuth if needed
+    Add DSP advertisers from Amazon API
 
-    Flow:
-    1. Check if user has valid OAuth tokens with DSP scope
-    2. If no tokens or missing DSP scope, return OAuth URL
-    3. If valid tokens exist, fetch advertisers from Amazon API and store them
+    This endpoint assumes the user has already completed OAuth authentication
+    through the standard OAuth flow. It fetches DSP advertisers from
+    the Amazon API and stores them in the database.
     """
     try:
         user_id = current_user.get("user_id") or current_user.get("id")
 
-        # Check for existing tokens for this user
+        # Get the user's existing OAuth tokens
         token_info = await token_service.get_active_token(user_id=user_id)
 
         if not token_info:
-            # No tokens - initiate OAuth
-            auth_url, state = amazon_oauth_service.generate_oauth_url()
-            await token_service.store_state_token(state, auth_url)
-
-            return AddDSPResponse(
-                requires_auth=True,
-                auth_url=auth_url,
-                state=state,
-                reason="no_tokens"
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="No OAuth tokens found. Please complete OAuth authentication first."
             )
-
-        # DSP access is determined by account permissions, not a specific scope
-        # The standard campaign_management scope covers DSP if the account has access
 
         # Check if token is expired
         expires_at = datetime.fromisoformat(
             token_info["expires_at"].replace("Z", "+00:00")
         )
         if expires_at <= datetime.now(timezone.utc):
-            # Token expired - need re-auth
-            auth_url, state = amazon_oauth_service.generate_oauth_url()
-            await token_service.store_state_token(state, auth_url)
+            # Try to refresh the token
+            try:
+                from app.services.refresh_service import refresh_service
+                refreshed = await refresh_service.refresh_token(token_info["refresh_token"])
+                token_info = await token_service.get_active_token(user_id=user_id)
+            except Exception as refresh_error:
+                logger.error("Failed to refresh expired token", error=str(refresh_error))
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="OAuth token expired. Please re-authenticate."
+                )
 
-            return AddDSPResponse(
-                requires_auth=True,
-                auth_url=auth_url,
-                state=state,
-                reason="token_expired"
-            )
-
-        # We have valid tokens with DSP scope - fetch and store advertisers
+        # Fetch and store DSP advertisers
         result = await account_service.fetch_and_store_dsp_advertisers(
             user_id=user_id,
             access_token=token_info["access_token"]
