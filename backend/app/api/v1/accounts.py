@@ -1733,9 +1733,14 @@ async def get_dsp_advertiser_seats(
         # Get user's token
         token_data = await get_user_token(user_id, supabase)
         if not token_data:
+            logger.warning(
+                "User has no Amazon token for DSP seats request",
+                user_id=user_id,
+                advertiser_id=advertiser_id
+            )
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="No Amazon account connected"
+                detail="Amazon account not connected. Please reconnect your Amazon account in Settings."
             )
 
         # Refresh token if needed
@@ -1909,9 +1914,14 @@ async def refresh_dsp_seats(
         # Get user's token
         token_data = await get_user_token(user_id, supabase)
         if not token_data:
+            logger.warning(
+                "User has no Amazon token for DSP seats request",
+                user_id=user_id,
+                advertiser_id=advertiser_id
+            )
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="No Amazon account connected"
+                detail="Amazon account not connected. Please reconnect your Amazon account in Settings."
             )
 
         # Force refresh token if requested
