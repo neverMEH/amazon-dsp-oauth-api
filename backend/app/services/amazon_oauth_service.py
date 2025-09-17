@@ -32,19 +32,12 @@ class AmazonOAuthService:
         self.api_base_url = "https://advertising-api.amazon.com"
         
         # Required scopes for Amazon Advertising APIs
-        # Use scope from config or default to comprehensive list
-        if hasattr(settings, 'amazon_scope') and settings.amazon_scope:
-            self.scope = settings.amazon_scope
-            self.scopes = settings.amazon_scope.split()
-        else:
-            self.scopes = [
-                "advertising::campaign_management",
-                "advertising::account_management",
-                "advertising::dsp_campaigns",
-                "advertising::reporting",
-                "advertising::amc:read"  # Added for AMC access
-            ]
-            self.scope = " ".join(self.scopes)
+        # Start with just the basic scope that was working
+        # Additional scopes can be added after app approval
+        self.scopes = [
+            "advertising::campaign_management"
+        ]
+        self.scope = " ".join(self.scopes)
     
     def generate_oauth_url(self, state: Optional[str] = None) -> Tuple[str, str]:
         """
