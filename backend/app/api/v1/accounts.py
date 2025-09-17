@@ -2320,8 +2320,9 @@ async def add_sponsored_ads_accounts(
     through the standard OAuth flow. It fetches Sponsored Ads accounts from
     the Amazon API and stores them in the database.
     """
+    user_id = current_user.get("user_id") or current_user.get("id")
+
     try:
-        user_id = current_user.get("user_id") or current_user.get("id")
 
         # Get the user's existing OAuth tokens
         token_info = await token_service.get_active_token(user_id=user_id)
@@ -2384,8 +2385,9 @@ async def add_dsp_advertisers(
     through the standard OAuth flow. It fetches DSP advertisers from
     the Amazon API and stores them in the database.
     """
+    user_id = current_user.get("user_id") or current_user.get("id")
+
     try:
-        user_id = current_user.get("user_id") or current_user.get("id")
 
         # Get the user's existing OAuth tokens
         token_info = await token_service.get_active_token(user_id=user_id)
