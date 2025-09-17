@@ -656,15 +656,15 @@ async def get_profile_details(
         )
 
 
-@router.get("/profiles/{profile_id}/dsp-accounts")
-async def list_dsp_accounts(
+@router.get("/profiles/{profile_id}/dsp-advertisers")
+async def list_dsp_advertisers(
     profile_id: str,
     x_admin_key: Optional[str] = Header(None, description="Admin key for account access")
 ):
     """
-    List DSP accounts under a profile
-    
-    Requires admin key and valid authentication. Returns DSP accounts available
+    List DSP advertisers under a profile
+
+    Requires admin key and valid authentication. Returns DSP advertisers available
     for campaign management under the specified profile.
     """
     try:
@@ -678,7 +678,7 @@ async def list_dsp_accounts(
                     "details": {}
                 }}
             )
-        
+
         # Get access token
         tokens = await token_service.get_decrypted_tokens()
         if not tokens:
@@ -690,17 +690,23 @@ async def list_dsp_accounts(
                     "details": {}
                 }}
             )
-        
-        # List DSP accounts
-        dsp_accounts = await account_service.list_dsp_accounts(
-            tokens["access_token"], 
-            profile_id
+
+        # Import DSP service
+        from app.services.dsp_amc_service import dsp_amc_service
+
+        # List DSP advertisers
+        result = await dsp_amc_service.list_dsp_advertisers(
+            access_token=tokens["access_token"],
+            profile_id=profile_id
         )
-        
+
+        advertisers = result.get("response", [])
+
         return {
-            "dsp_accounts": dsp_accounts,
-            "account_count": len(dsp_accounts),
+            "dsp_advertisers": advertisers,
+            "advertiser_count": len(advertisers),
             "profile_id": profile_id,
+            "total_results": result.get("totalResults", len(advertisers)),
             "retrieved_at": datetime.now(timezone.utc).isoformat()
         }
         

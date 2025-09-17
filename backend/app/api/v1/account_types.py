@@ -141,18 +141,18 @@ async def get_sponsored_ads_accounts(
 @router.get(
     "/dsp",
     response_model=Dict[str, Any],
-    summary="Get DSP accounts",
-    description="Fetch DSP accounts with entity/profile IDs and marketplace data"
+    summary="Get DSP advertisers",
+    description="Fetch DSP advertisers with entity/profile IDs and marketplace data"
 )
-async def get_dsp_accounts(
+async def get_dsp_advertisers(
     user_context: Dict = Depends(get_user_context),
     limit: int = Query(100, ge=1, le=500, description="Number of results"),
     offset: int = Query(0, ge=0, description="Pagination offset")
 ):
-    """Get DSP accounts for the authenticated user"""
+    """Get DSP advertisers for the authenticated user"""
     try:
         logger.info(
-            "fetching_dsp_accounts",
+            "fetching_dsp_advertisers",
             user_id=user_context["user_id"],
             limit=limit,
             offset=offset
@@ -161,7 +161,7 @@ async def get_dsp_accounts(
         # Get Supabase client
         supabase = get_supabase_service_client()
 
-        # Query DSP accounts
+        # Query DSP advertisers
         query = supabase.table("user_accounts").select("*").eq(
             "user_id", user_context["user_id"]
         ).eq(
@@ -173,17 +173,17 @@ async def get_dsp_accounts(
         # Check if user has DSP access (may be empty)
         access_denied = False
         if not result.data:
-            # Try to fetch DSP accounts from Amazon API
+            # Try to fetch DSP advertisers from Amazon API
             try:
                 # This would call the Amazon DSP API
                 # For now, we'll just mark as no access
-                logger.info("no_dsp_accounts_found", user_id=user_context["user_id"])
+                logger.info("no_dsp_advertisers_found", user_id=user_context["user_id"])
                 access_denied = False  # Empty is not the same as denied
             except Exception as api_error:
                 if "403" in str(api_error) or "Forbidden" in str(api_error):
                     access_denied = True
 
-        # Transform DSP accounts
+        # Transform DSP advertisers
         accounts = []
         for acc in result.data:
             accounts.append({
@@ -217,7 +217,7 @@ async def get_dsp_accounts(
 
     except Exception as e:
         logger.error(
-            "error_fetching_dsp_accounts",
+            "error_fetching_dsp_advertisers",
             user_id=user_context["user_id"],
             error=str(e)
         )
@@ -233,7 +233,7 @@ async def get_dsp_accounts(
 
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to fetch DSP accounts: {str(e)}"
+            detail=f"Failed to fetch DSP advertisers: {str(e)}"
         )
 
 

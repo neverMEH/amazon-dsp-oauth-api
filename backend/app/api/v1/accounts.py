@@ -14,6 +14,7 @@ from app.services.account_service import account_service
 from app.services.amazon_oauth_service import amazon_oauth_service
 from app.services.token_service import token_service
 from app.services.dsp_amc_service import dsp_amc_service
+from app.services.account_sync_service import account_sync_service
 from app.db.base import get_supabase_client, get_supabase_service_client
 from app.core.exceptions import TokenRefreshError, RateLimitError, DSPSeatsError, MissingDSPAccessError
 from app.models.amazon_account import AmazonAccount
@@ -249,14 +250,14 @@ async def get_sponsored_ads_accounts(
 
 
 @router.get("/dsp")
-async def get_dsp_accounts(
+async def get_dsp_advertisers(
     current_user: Dict = Depends(RequireAuth)
 ) -> Dict[str, Any]:
     """
-    Get DSP accounts for the current user
+    Get DSP advertisers for the current user
 
     Returns:
-        Dictionary containing DSP accounts
+        Dictionary containing DSP advertisers
     """
     supabase = get_supabase_service_client()
     user_context = current_user
@@ -284,7 +285,7 @@ async def get_dsp_accounts(
                 account_dict["marketplace_name"] = AmazonAccount.from_dict(acc).marketplace_name
                 accounts.append(account_dict)
 
-        logger.info(f"Retrieved {len(accounts)} DSP accounts from database for user {user_id}")
+        logger.info(f"Retrieved {len(accounts)} DSP advertisers from database for user {user_id}")
 
         return {
             "accounts": accounts,
@@ -292,10 +293,10 @@ async def get_dsp_accounts(
         }
 
     except Exception as e:
-        logger.error(f"Failed to retrieve DSP accounts: {str(e)}")
+        logger.error(f"Failed to retrieve DSP advertisers: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve DSP accounts: {str(e)}"
+            detail=f"Failed to retrieve DSP advertisers: {str(e)}"
         )
 
 
@@ -539,58 +540,39 @@ async def list_all_account_types(
                 }
             })
 
-        # Process DSP advertisers
+        # Process DSP advertisers using the updated sync service
         for advertiser in account_data.get("dsp_advertisers", []):
-            # Check if DSP account exists
-            existing = supabase.table("user_accounts").select("*").eq(
-                "user_id", user_id
-            ).eq(
-                "amazon_account_id", advertiser.get("advertiserId")
-            ).execute()
+            try:
+                # Use the updated account_sync_service that properly maps to dedicated columns
+                success, was_created = await account_sync_service._upsert_dsp_advertiser(user_id, advertiser)
 
-            if not existing.data:
-                # Create new DSP account record
-                status_map = {
-                    "ACTIVE": "active",
-                    "SUSPENDED": "suspended",
-                    "INACTIVE": "inactive"
-                }
+                if success:
+                    # Get the updated account from database to return in response
+                    existing = supabase.table("user_accounts").select("*").eq(
+                        "user_id", user_id
+                    ).eq(
+                        "amazon_account_id", advertiser.get("advertiserId")
+                    ).execute()
 
-                new_account = AmazonAccount(
-                    user_id=user_id,
-                    account_name=advertiser.get("advertiserName", "Unknown DSP"),
-                    amazon_account_id=advertiser.get("advertiserId"),
-                    marketplace_id=advertiser.get("countryCode"),
-                    account_type="dsp",
-                    status=status_map.get(advertiser.get("advertiserStatus", "ACTIVE"), "active"),
-                    metadata={
-                        "advertiser_type": advertiser.get("advertiserType"),
-                        "country_code": advertiser.get("countryCode"),
-                        "currency": advertiser.get("currency"),
-                        "timezone": advertiser.get("timeZone"),
-                        "created_date": advertiser.get("createdDate")
-                    }
-                )
-                result = supabase.table("user_accounts").insert(new_account.to_dict()).execute()
-                db_account = result.data[0] if result.data else new_account.to_dict()
-            else:
-                # Update existing DSP account
-                db_account = existing.data[0]
-                supabase.table("user_accounts").update({
-                    "last_synced_at": datetime.now(timezone.utc).isoformat()
-                }).eq("id", db_account["id"]).execute()
-
-            normalized_accounts.append({
-                "id": db_account["id"],
-                "name": advertiser.get("advertiserName"),
-                "type": "dsp",
-                "platform_id": advertiser.get("advertiserId"),
-                "status": db_account["status"],
-                "metadata": {
-                    **advertiser,
-                    "db_id": db_account["id"]
-                }
-            })
+                    if existing.data:
+                        db_account = existing.data[0]
+                        normalized_accounts.append({
+                            "id": db_account["id"],
+                            "name": advertiser.get("name") or advertiser.get("advertiserName"),
+                            "type": "dsp",
+                            "platform_id": advertiser.get("advertiserId"),
+                            "status": db_account["status"],
+                            "metadata": {
+                                **advertiser,
+                                "db_id": db_account["id"],
+                                "was_created": was_created
+                            }
+                        })
+                else:
+                    logger.error(f"Failed to sync DSP advertiser {advertiser.get('advertiserId')}")
+            except Exception as e:
+                logger.error(f"Error syncing DSP advertiser {advertiser.get('advertiserId')}: {str(e)}")
+                # Continue with other advertisers even if one fails
 
         # Process AMC instances
         for instance in account_data.get("amc_instances", []):
