@@ -144,18 +144,26 @@ class TokenService:
             await self.log_auth_event("login", "failure", error_message=str(e))
             raise DatabaseError("store_tokens", str(e))
     
-    async def get_active_token(self) -> Optional[Dict]:
+    async def get_active_token(self, user_id: Optional[str] = None) -> Optional[Dict]:
         """
-        Get the active token record
-        
+        Get the active token record for a specific user
+
+        Args:
+            user_id: Optional user ID to filter tokens
+
         Returns:
             Active token record or None
         """
         try:
-            # Get all active tokens (don't use .single() as it fails with multiple results)
-            result = self.db.table("oauth_tokens").select("*").eq(
-                "is_active", True
-            ).execute()
+            # Build query for active tokens
+            query = self.db.table("oauth_tokens").select("*").eq("is_active", True)
+
+            # Add user filter if provided
+            if user_id:
+                query = query.eq("user_id", user_id)
+
+            # Execute query
+            result = query.execute()
             
             if not result.data:
                 logger.debug("No active tokens found")

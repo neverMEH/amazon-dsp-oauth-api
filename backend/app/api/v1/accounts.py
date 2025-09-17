@@ -2324,8 +2324,8 @@ async def add_sponsored_ads_accounts(
     try:
         user_id = current_user.get("user_id") or current_user.get("id")
 
-        # Check for existing tokens
-        token_info = await token_service.get_active_token()
+        # Check for existing tokens for this user
+        token_info = await token_service.get_active_token(user_id=user_id)
 
         if not token_info:
             # No tokens - initiate OAuth
@@ -2392,8 +2392,8 @@ async def add_dsp_advertisers(
     try:
         user_id = current_user.get("user_id") or current_user.get("id")
 
-        # Check for existing tokens
-        token_info = await token_service.get_active_token()
+        # Check for existing tokens for this user
+        token_info = await token_service.get_active_token(user_id=user_id)
 
         if not token_info:
             # No tokens - initiate OAuth
