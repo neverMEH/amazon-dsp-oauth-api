@@ -80,7 +80,9 @@
       "Bash(env)",
       "mcp__railway__variable_set",
       "mcp__railway__service_restart",
-      "Bash(git show-branch:*)"
+      "Bash(git show-branch:*)",
+      "Bash(PYTHONPATH=/mnt/c/Users/Aeciu/Dev Work/amazon-dsp-oauth-api/backend python -m uvicorn app.main:app --port 8000 --reload)",
+      "Bash(PYTHONPATH=/mnt/c/Users/Aeciu/Dev Work/amazon-dsp-oauth-api/backend python3 -m uvicorn app.main:app --port 8000 --reload)"
     ],
     "deny": [],
     "ask": []
