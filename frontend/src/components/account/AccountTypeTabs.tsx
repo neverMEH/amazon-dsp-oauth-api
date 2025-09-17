@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertCircle, Shield, Database, BarChart3, ChevronLeft } from 'lucide-react';
+import { AlertCircle, Shield, Database, BarChart3, ChevronLeft, Plus } from 'lucide-react';
 import { AccountTypeTable } from './AccountTypeTable';
 import { DSPSeatsTab } from './DSPSeatsTab';
 import { accountService } from '@/services/accountService';
@@ -20,6 +20,80 @@ interface AccountTypeTabsProps {
   onAccountAction?: (action: string, account: any) => void;
 }
 
+interface TabActionButtonProps {
+  accountType: AccountType;
+  onClick: () => void;
+  isLoading?: boolean;
+  disabled?: boolean;
+  className?: string;
+}
+
+// Tab-specific action button component
+const TabActionButton: React.FC<TabActionButtonProps> = ({
+  accountType,
+  onClick,
+  isLoading = false,
+  disabled = false,
+  className,
+}) => {
+  const getButtonLabel = () => {
+    switch (accountType) {
+      case 'sponsored-ads':
+        return 'Add Sponsored Ads';
+      case 'dsp':
+        return 'Add DSP Advertiser';
+      case 'amc':
+        return 'Add AMC Instance';
+      default:
+        return 'Add Account';
+    }
+  };
+
+  const getLoadingLabel = () => {
+    switch (accountType) {
+      case 'sponsored-ads':
+        return 'Adding Sponsored Ads...';
+      case 'dsp':
+        return 'Adding DSP Advertiser...';
+      case 'amc':
+        return 'Adding AMC Instance...';
+      default:
+        return 'Adding...';
+    }
+  };
+
+  return (
+    <Button
+      variant="default"
+      size="default"
+      onClick={onClick}
+      disabled={disabled || isLoading}
+      className={cn(
+        "gap-2 transition-all duration-200",
+        isLoading && "opacity-70 cursor-wait",
+        className
+      )}
+      aria-label={getButtonLabel()}
+      aria-busy={isLoading}
+      aria-disabled={disabled || isLoading}
+    >
+      <Plus
+        className={cn(
+          "h-4 w-4",
+          isLoading && "animate-pulse"
+        )}
+        aria-hidden="true"
+      />
+      <span className="hidden sm:inline-block">
+        {isLoading ? getLoadingLabel() : getButtonLabel()}
+      </span>
+      <span className="sm:hidden">
+        Add
+      </span>
+    </Button>
+  );
+};
+
 export const AccountTypeTabs: React.FC<AccountTypeTabsProps> = ({
   className,
   onAccountSelect,
@@ -32,6 +106,9 @@ export const AccountTypeTabs: React.FC<AccountTypeTabsProps> = ({
     return ['sponsored-ads', 'dsp', 'amc'].includes(typeParam) ? typeParam : 'sponsored-ads';
   });
   const [selectedDSPAccount, setSelectedDSPAccount] = useState<any>(null);
+  const [isAddingSponsoredAds, setIsAddingSponsoredAds] = useState(false);
+  const [isAddingDSP, setIsAddingDSP] = useState(false);
+  const [isAddingAMC, setIsAddingAMC] = useState(false);
   const urlUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Query for Sponsored Ads accounts
@@ -170,6 +247,78 @@ export const AccountTypeTabs: React.FC<AccountTypeTabsProps> = ({
     }
   };
 
+  const handleAddSponsoredAds = async () => {
+    setIsAddingSponsoredAds(true);
+    try {
+      const result = await accountService.syncSponsoredAdsAccounts();
+
+      toast({
+        title: "Sponsored Ads accounts added",
+        description: `Successfully added ${result.accounts?.length || 0} Sponsored Ads accounts.`,
+      });
+
+      // Refetch the data to show new accounts
+      sponsoredAdsQuery.refetch();
+    } catch (error) {
+      console.error('Failed to add Sponsored Ads accounts:', error);
+      toast({
+        title: "Failed to add accounts",
+        description: "Could not add Sponsored Ads accounts. Please check your Amazon connection.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAddingSponsoredAds(false);
+    }
+  };
+
+  const handleAddDSP = async () => {
+    setIsAddingDSP(true);
+    try {
+      const result = await accountService.syncDSPAccounts();
+
+      toast({
+        title: "DSP advertisers added",
+        description: `Successfully added ${result.accounts?.length || 0} DSP advertisers.`,
+      });
+
+      // Refetch the data to show new accounts
+      dspQuery.refetch();
+    } catch (error) {
+      console.error('Failed to add DSP advertisers:', error);
+      toast({
+        title: "Failed to add advertisers",
+        description: "Could not add DSP advertisers. Please check your Amazon connection and permissions.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAddingDSP(false);
+    }
+  };
+
+  const handleAddAMC = async () => {
+    setIsAddingAMC(true);
+    try {
+      const result = await accountService.syncAMCAccounts();
+
+      toast({
+        title: "AMC instances added",
+        description: `Successfully added ${result.accounts?.length || 0} AMC instances.`,
+      });
+
+      // Refetch the data to show new accounts
+      amcQuery.refetch();
+    } catch (error) {
+      console.error('Failed to add AMC instances:', error);
+      toast({
+        title: "Failed to add instances",
+        description: "Could not add AMC instances. Please check your Amazon connection and permissions.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAddingAMC(false);
+    }
+  };
+
   const renderTabContent = (type: AccountType) => {
     let query, accounts, error, isLoading;
 
@@ -297,7 +446,23 @@ export const AccountTypeTabs: React.FC<AccountTypeTabsProps> = ({
           className="mt-4 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           data-testid="sponsored-ads-content"
         >
-          {renderTabContent('sponsored-ads')}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-medium">Sponsored Ads Accounts</h3>
+                <p className="text-sm text-muted-foreground">
+                  Manage your Sponsored Products, Brands, and Display campaigns
+                </p>
+              </div>
+              <TabActionButton
+                accountType="sponsored-ads"
+                onClick={handleAddSponsoredAds}
+                isLoading={isAddingSponsoredAds || sponsoredAdsQuery.isRefetching}
+                disabled={sponsoredAdsQuery.isLoading}
+              />
+            </div>
+            {renderTabContent('sponsored-ads')}
+          </div>
         </TabsContent>
 
         <TabsContent
@@ -329,7 +494,23 @@ export const AccountTypeTabs: React.FC<AccountTypeTabsProps> = ({
               <DSPSeatsTab advertiserId={selectedDSPAccount.amazon_account_id} />
             </div>
           ) : (
-            renderTabContent('dsp')
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-medium">DSP Advertisers</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Manage your demand-side platform advertisers and campaigns
+                  </p>
+                </div>
+                <TabActionButton
+                  accountType="dsp"
+                  onClick={handleAddDSP}
+                  isLoading={isAddingDSP || dspQuery.isRefetching}
+                  disabled={dspQuery.isLoading}
+                />
+              </div>
+              {renderTabContent('dsp')}
+            </div>
           )}
         </TabsContent>
 
@@ -338,7 +519,23 @@ export const AccountTypeTabs: React.FC<AccountTypeTabsProps> = ({
           className="mt-4 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           data-testid="amc-content"
         >
-          {renderTabContent('amc')}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-medium">AMC Instances</h3>
+                <p className="text-sm text-muted-foreground">
+                  Manage your Amazon Marketing Cloud instances and data analytics
+                </p>
+              </div>
+              <TabActionButton
+                accountType="amc"
+                onClick={handleAddAMC}
+                isLoading={isAddingAMC || amcQuery.isRefetching}
+                disabled={amcQuery.isLoading}
+              />
+            </div>
+            {renderTabContent('amc')}
+          </div>
         </TabsContent>
       </Tabs>
     </div>

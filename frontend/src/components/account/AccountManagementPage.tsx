@@ -1,27 +1,13 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  Plus,
   Settings,
   RefreshCw,
   AlertCircle,
   CheckCircle,
-  XCircle,
   CircleOff,
-  ExternalLink,
-  Download,
-  Shield,
-  ChevronDown,
-  BarChart3,
-  Database
+  Shield
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from '@/components/ui/dropdown-menu';
 import { AccountTypeTabs } from './AccountTypeTabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -89,101 +75,6 @@ export const AccountManagementPage: React.FC<AccountManagementPageProps> = ({
   };
 
 
-  const handleSyncFromAmazon = async () => {
-    setIsRefreshing(true);
-    try {
-      const result = await accountService.syncAmazonAccounts();
-
-      toast({
-        title: "Accounts synced",
-        description: `Successfully synced ${result.accounts?.length || 0} accounts from Amazon.`,
-      });
-
-      // Reload to display the newly synced accounts
-      await loadData();
-    } catch (error) {
-      console.error('Failed to sync accounts from Amazon:', error);
-      toast({
-        title: "Sync failed",
-        description: "Failed to sync accounts from Amazon. Please check your connection.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
-
-  const handleSyncSponsoredAds = async () => {
-    setIsRefreshing(true);
-    try {
-      const result = await accountService.syncSponsoredAdsAccounts();
-
-      toast({
-        title: "Sponsored Ads synced",
-        description: `Successfully synced ${result.accounts?.length || 0} Sponsored Ads accounts.`,
-      });
-
-      // Reload to display the newly synced accounts
-      await loadData();
-    } catch (error) {
-      console.error('Failed to sync Sponsored Ads accounts:', error);
-      toast({
-        title: "Sync failed",
-        description: "Failed to sync Sponsored Ads accounts. Please check your connection.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
-
-  const handleSyncDSP = async () => {
-    setIsRefreshing(true);
-    try {
-      const result = await accountService.syncDSPAccounts();
-
-      toast({
-        title: "DSP accounts synced",
-        description: `Successfully synced ${result.accounts?.length || 0} DSP accounts.`,
-      });
-
-      // Reload to display the newly synced accounts
-      await loadData();
-    } catch (error) {
-      console.error('Failed to sync DSP accounts:', error);
-      toast({
-        title: "Sync failed",
-        description: "Failed to sync DSP accounts. Please check your connection.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
-
-  const handleSyncAMC = async () => {
-    setIsRefreshing(true);
-    try {
-      const result = await accountService.syncAMCAccounts();
-
-      toast({
-        title: "AMC instances synced",
-        description: `Successfully synced ${result.accounts?.length || 0} AMC instances.`,
-      });
-
-      // Reload to display the newly synced accounts
-      await loadData();
-    } catch (error) {
-      console.error('Failed to sync AMC instances:', error);
-      toast({
-        title: "Sync failed",
-        description: "Failed to sync AMC instances. Please check your connection.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
 
   const handleRefreshAll = async () => {
     setIsRefreshing(true);
@@ -311,51 +202,20 @@ export const AccountManagementPage: React.FC<AccountManagementPageProps> = ({
         </div>
         
         <div className="flex gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                disabled={isRefreshing}
-                variant="default"
-              >
-                <Download className={cn("h-4 w-4 mr-2", isRefreshing && "animate-pulse")} />
-                Sync from Amazon
-                <ChevronDown className="h-4 w-4 ml-2" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-56">
-              <DropdownMenuItem onClick={handleSyncFromAmazon} disabled={isRefreshing}>
-                <Download className="h-4 w-4 mr-2" />
-                Sync All Account Types
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleSyncSponsoredAds} disabled={isRefreshing}>
-                <BarChart3 className="h-4 w-4 mr-2" />
-                Sync Sponsored Ads Only
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleSyncDSP} disabled={isRefreshing}>
-                <Database className="h-4 w-4 mr-2" />
-                Sync DSP Only
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleSyncAMC} disabled={isRefreshing}>
-                <Shield className="h-4 w-4 mr-2" />
-                Sync AMC Only
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
           <Button
             variant="outline"
             onClick={handleRefreshAll}
             disabled={isRefreshing || accounts.length === 0}
+            aria-label="Refresh all account tokens"
           >
             <RefreshCw className={cn("h-4 w-4 mr-2", isRefreshing && "animate-spin")} />
-            Refresh Tokens
+            Refresh All Tokens
           </Button>
 
           {onAddAccount && (
             <Button onClick={onAddAccount} variant="outline">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Account
+              <Settings className="h-4 w-4 mr-2" />
+              Account Settings
             </Button>
           )}
         </div>
