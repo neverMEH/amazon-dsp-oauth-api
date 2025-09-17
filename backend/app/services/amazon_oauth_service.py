@@ -32,10 +32,11 @@ class AmazonOAuthService:
         self.api_base_url = "https://advertising-api.amazon.com"
         
         # Required scopes for Amazon Advertising APIs
-        # Start with just the basic scope that was working
-        # Additional scopes can be added after app approval
+        # Note: DSP access is granted through the standard campaign_management scope
+        # when the user has DSP permissions on their account
         self.scopes = [
-            "advertising::campaign_management"
+            "advertising::campaign_management",
+            "advertising::account_management"
         ]
         self.scope = " ".join(self.scopes)
     
@@ -262,6 +263,27 @@ class AmazonOAuthService:
             logger.error("Unexpected error during token refresh", error=str(e))
             raise TokenRefreshError(f"Unexpected error: {str(e)}")
     
+    def has_dsp_scope(self) -> bool:
+        """Check if OAuth configuration includes DSP scope"""
+        return "advertising::dsp_campaigns" in self.scopes
+
+    def has_sponsored_ads_scope(self) -> bool:
+        """Check if OAuth configuration includes Sponsored Ads scopes"""
+        required_scopes = ["advertising::campaign_management", "advertising::account_management"]
+        return all(scope in self.scopes for scope in required_scopes)
+
+    def validate_scopes(self, required_scopes: List[str]) -> bool:
+        """
+        Validate if service has all required scopes
+
+        Args:
+            required_scopes: List of required scope strings
+
+        Returns:
+            True if all required scopes are present
+        """
+        return all(scope in self.scopes for scope in required_scopes)
+
     async def get_user_profiles(self, access_token: str) -> List[AmazonAccountInfo]:
         """
         Get user's Amazon advertising profiles

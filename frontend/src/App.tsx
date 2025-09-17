@@ -12,6 +12,7 @@ import { TokenResponse } from '@/services/api';
 import { AccountManagementPage } from '@/components/account/AccountManagementPage';
 import { SettingsPage } from '@/pages/Settings';
 import AMC from '@/pages/AMC';
+import Callback from '@/pages/Callback';
 
 // Legacy components for backward compatibility
 import { OAuthLogin } from '@/components/OAuthLogin';
@@ -146,9 +147,11 @@ function App() {
                   } 
                 />
 
+                {/* OAuth callback route */}
+                <Route path="/callback" element={<Callback />} />
+
                 {/* Legacy routes for backward compatibility */}
                 <Route path="/oauth-login" element={<OAuthLogin />} />
-                <Route path="/callback" element={<OAuthCallback />} />
                 <Route path="/token-dashboard" element={<TokenDashboard tokens={{
                   access_token: '',
                   refresh_token: '',

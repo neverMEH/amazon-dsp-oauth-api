@@ -770,6 +770,252 @@ class AccountSyncService:
             "account_statistics": account_stats
         }
 
+    async def fetch_and_store_sponsored_ads(
+        self,
+        user_id: str,
+        access_token: str
+    ) -> Dict[str, Any]:
+        """
+        Fetch and store Sponsored Ads accounts from Amazon API
+
+        This method is called when user clicks "Add Sponsored Ads" button.
+        It fetches accounts from the Amazon Ads API and stores them locally.
+
+        Args:
+            user_id: Database user ID
+            access_token: Valid Amazon access token
+
+        Returns:
+            Dictionary with accounts added and list of accounts
+        """
+        # Initialize Supabase client if needed
+        if not self.supabase:
+            from app.db.base import get_supabase_service_client
+            self.supabase = get_supabase_service_client()
+
+        try:
+            # Fetch accounts from Amazon API v3.0
+            all_accounts = await self._fetch_all_accounts(access_token)
+
+            accounts_added = 0
+            accounts_list = []
+
+            for account_data in all_accounts:
+                try:
+                    # Store account in database
+                    success, was_created = await self._upsert_advertising_account(
+                        user_id,
+                        account_data
+                    )
+
+                    if success and was_created:
+                        accounts_added += 1
+
+                    # Format account for response
+                    amazon_account_id = account_data.get("adsAccountId")
+                    alternate_ids = account_data.get("alternateIds", [])
+                    first_alternate = alternate_ids[0] if alternate_ids else {}
+
+                    status_map = {
+                        "CREATED": "active",
+                        "PARTIALLY_CREATED": "partial",
+                        "PENDING": "pending",
+                        "DISABLED": "disabled"
+                    }
+                    api_status = account_data.get("status", "CREATED")
+
+                    accounts_list.append({
+                        "id": str(uuid4()),  # Generate a UUID for frontend
+                        "account_name": account_data.get("accountName", "Unknown"),
+                        "amazon_account_id": amazon_account_id,
+                        "account_type": "advertising",
+                        "status": status_map.get(api_status, "active"),
+                        "country_codes": account_data.get("countryCodes", []),
+                        "profile_id": first_alternate.get("profileId")
+                    })
+
+                except Exception as e:
+                    logger.error(
+                        "Failed to process Sponsored Ads account",
+                        account_id=account_data.get("adsAccountId"),
+                        error=str(e)
+                    )
+
+            logger.info(
+                "Fetched and stored Sponsored Ads accounts",
+                user_id=user_id,
+                total_accounts=len(all_accounts),
+                accounts_added=accounts_added
+            )
+
+            return {
+                "accounts": accounts_list,
+                "accounts_added": accounts_added
+            }
+
+        except Exception as e:
+            logger.error(
+                "Failed to fetch Sponsored Ads accounts",
+                user_id=user_id,
+                error=str(e)
+            )
+            raise
+
+    async def fetch_and_store_dsp_advertisers(
+        self,
+        user_id: str,
+        access_token: str,
+        profile_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Fetch and store DSP advertisers from Amazon API
+
+        This method is called when user clicks "Add DSP Advertiser" button.
+        It fetches DSP advertisers from the Amazon DSP API and stores them locally.
+
+        Args:
+            user_id: Database user ID
+            access_token: Valid Amazon access token
+            profile_id: Optional profile ID for scope
+
+        Returns:
+            Dictionary with advertisers added and list of advertisers
+        """
+        # Initialize Supabase client if needed
+        if not self.supabase:
+            from app.db.base import get_supabase_service_client
+            self.supabase = get_supabase_service_client()
+
+        try:
+            from app.services.dsp_amc_service import dsp_amc_service
+
+            # Fetch DSP advertisers
+            advertisers_data = await dsp_amc_service.list_dsp_advertisers(
+                access_token=access_token,
+                profile_id=profile_id
+            )
+
+            advertisers = advertisers_data.get("advertisers", [])
+            advertisers_added = 0
+            advertisers_list = []
+
+            for advertiser_data in advertisers:
+                try:
+                    # Store advertiser in database
+                    success, was_created = await self._upsert_dsp_advertiser(
+                        user_id,
+                        advertiser_data
+                    )
+
+                    if success and was_created:
+                        advertisers_added += 1
+
+                    # Format advertiser for response
+                    advertiser_name = (
+                        advertiser_data.get("name") or
+                        advertiser_data.get("advertiserName", "Unknown DSP")
+                    )
+
+                    advertisers_list.append({
+                        "id": str(uuid4()),  # Generate a UUID for frontend
+                        "account_name": advertiser_name,
+                        "amazon_account_id": advertiser_data.get("advertiserId"),
+                        "account_type": "dsp",
+                        "status": "active",
+                        "country": advertiser_data.get("country") or advertiser_data.get("countryCode"),
+                        "profile_id": advertiser_data.get("profileId")
+                    })
+
+                except Exception as e:
+                    logger.error(
+                        "Failed to process DSP advertiser",
+                        advertiser_id=advertiser_data.get("advertiserId"),
+                        error=str(e)
+                    )
+
+            logger.info(
+                "Fetched and stored DSP advertisers",
+                user_id=user_id,
+                total_advertisers=len(advertisers),
+                advertisers_added=advertisers_added
+            )
+
+            return {
+                "advertisers": advertisers_list,
+                "advertisers_added": advertisers_added
+            }
+
+        except Exception as e:
+            logger.error(
+                "Failed to fetch DSP advertisers",
+                user_id=user_id,
+                error=str(e)
+            )
+            raise
+
+    async def delete_account(
+        self,
+        user_id: str,
+        account_id: str
+    ) -> Dict[str, Any]:
+        """
+        Delete an account from the database
+
+        This method is called when user deletes an account from the UI.
+        It only removes the account from the database, not from Amazon.
+
+        Args:
+            user_id: Database user ID
+            account_id: Account ID to delete
+
+        Returns:
+            Dictionary with success status
+        """
+        # Initialize Supabase client if needed
+        if not self.supabase:
+            from app.db.base import get_supabase_service_client
+            self.supabase = get_supabase_service_client()
+
+        try:
+            # Check if account exists and belongs to user
+            existing = self.supabase.table("user_accounts").select("*").eq(
+                "id", account_id
+            ).eq(
+                "user_id", user_id
+            ).execute()
+
+            if not existing.data:
+                raise ValueError("Account not found")
+
+            # Delete the account
+            result = self.supabase.table("user_accounts").delete().eq(
+                "id", account_id
+            ).eq(
+                "user_id", user_id
+            ).execute()
+
+            if result.data:
+                logger.info(
+                    "Account deleted successfully",
+                    user_id=user_id,
+                    account_id=account_id
+                )
+                return {"success": True}
+            else:
+                raise Exception("Failed to delete account")
+
+        except ValueError:
+            # Re-raise for proper error handling
+            raise
+        except Exception as e:
+            logger.error(
+                "Failed to delete account",
+                user_id=user_id,
+                account_id=account_id,
+                error=str(e)
+            )
+            raise
+
 
 # Create singleton instance
 account_sync_service = AccountSyncService()

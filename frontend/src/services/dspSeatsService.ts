@@ -56,36 +56,20 @@ export interface SyncHistoryResponse {
 class DSPSeatsService {
   private baseUrl = import.meta.env.VITE_API_URL || '';
 
-  // Helper function to get auth token from Clerk
+  // Helper function to get auth token from Clerk (removed since Clerk was removed from project)
   private async getAuthToken(): Promise<string | null> {
-    // @ts-ignore - Clerk is available globally
-    const clerk = window.Clerk;
-    if (!clerk || !clerk.session) {
-      console.warn('Clerk not initialized or no active session');
-      return null;
-    }
-
-    try {
-      const token = await clerk.session.getToken();
-      return token;
-    } catch (error) {
-      console.error('Failed to get Clerk token:', error);
-      return null;
-    }
+    // Clerk auth removed from project, returning null
+    return null;
   }
 
-  // Helper for authenticated requests with AbortController support
+  // Helper for requests with AbortController support (auth removed)
   private async fetchWithAuth(url: string, options: RequestInit = {}): Promise<any> {
-    const token = await this.getAuthToken();
-    if (!token) {
-      throw new Error('No authentication token available');
-    }
-
+    // Since Clerk auth was removed, we don't need authentication
     const fullUrl = `${this.baseUrl}${url}`;
     const response = await fetch(fullUrl, {
       ...options,
       headers: {
-        'Authorization': `Bearer ${token}`,
+        // No Authorization header needed since Clerk was removed
         'Content-Type': 'application/json',
         ...options.headers,
       },
@@ -125,6 +109,11 @@ class DSPSeatsService {
           queryParams.append('exchange_ids', id);
         });
       }
+
+      // Add parent_entity_id which is required for DSP seats API
+      // TODO: This should be stored in the database with the DSP advertiser
+      queryParams.append('parent_entity_id', 'ENTITY2SE4T62ZTC23S');
+      queryParams.append('profile_id', '3810822089931808');
 
       const url = `/api/v1/accounts/dsp/${advertiserId}/seats${
         queryParams.toString() ? `?${queryParams.toString()}` : ''

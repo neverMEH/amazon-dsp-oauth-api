@@ -129,10 +129,45 @@ python test_auth_status.py
   - Missing pagination implementation (known issue)
 - Automatic token refresh with retry logic
 
-#### Clerk Authentication
-- User management with multi-tenancy support
-- Webhook handling for user sync
-- Account linking between Clerk and Amazon accounts
+#### Dual Authentication System
+- **Primary Authentication**: Clerk handles user authentication and session management
+  - JWT session tokens for API authentication
+  - User management with webhook sync to local database
+  - Frontend authentication state management
+- **Amazon API Authentication**: Separate OAuth flow for Amazon Advertising API access
+  - OAuth 2.0 flow specifically for Amazon API access
+  - Encrypted token storage for Amazon access/refresh tokens
+  - Token refresh scheduler for automatic token management
+  - No dependency on Clerk for Amazon API calls
+
+## Authentication Architecture
+
+### Authentication Flow Overview
+This application implements a **dual authentication system** where user authentication (Clerk) is separate from Amazon API authentication:
+
+1. **User Authentication (Clerk)**:
+   - Users sign in through Clerk (frontend)
+   - Clerk provides JWT session tokens
+   - Middleware validates Clerk tokens for API access
+   - User data synced to local database via webhooks
+
+2. **Amazon API Authentication (Separate OAuth)**:
+   - Independent OAuth 2.0 flow with Amazon Advertising API
+   - Users must explicitly connect their Amazon account after Clerk login
+   - Amazon tokens stored encrypted in database
+   - Automatic token refresh handled by background scheduler
+
+### Why Two Authentication Systems?
+- **User Management**: Clerk provides robust user authentication, session management, and security
+- **API Access**: Amazon requires separate OAuth for API access - cannot use Clerk tokens
+- **Security**: Amazon tokens are isolated and can be revoked independently
+- **Flexibility**: Users can disconnect Amazon accounts without losing app access
+
+### Implementation Details
+- **ClerkAuthMiddleware**: Validates Clerk JWT tokens and syncs users to database
+- **Amazon OAuth Service**: Handles Amazon-specific OAuth flow and token management
+- **Token Refresh Scheduler**: Background service that refreshes Amazon tokens before expiration
+- **Encrypted Storage**: Amazon tokens stored with Fernet encryption
 
 ## Database Schema
 
@@ -188,17 +223,41 @@ python test_auth_status.py
 
 ## API Endpoints
 
-### Authentication
-- `GET /api/v1/auth/amazon/login` - Initiate OAuth
-- `GET /api/v1/auth/amazon/callback` - OAuth callback
-- `GET /api/v1/auth/status` - Check auth status
-- `POST /api/v1/auth/refresh` - Manual token refresh
+### Authentication (Amazon OAuth)
+- `GET /api/v1/auth/amazon/login` - Initiate Amazon OAuth flow
+- `GET /api/v1/auth/amazon/callback` - Handle Amazon OAuth callback
+- `GET /api/v1/auth/status` - Check Amazon token status
+- `POST /api/v1/auth/refresh` - Manual token refresh (admin key required)
+- `DELETE /api/v1/auth/revoke` - Revoke tokens (admin key required)
+- `GET /api/v1/auth/tokens` - Get access tokens (admin key required)
+- `GET /api/v1/auth/audit` - Get authentication audit logs
+- `GET /api/v1/auth/profiles` - List Amazon profiles (admin key required)
+- `GET /api/v1/auth/profiles/{profile_id}` - Get specific profile details
+- `GET /api/v1/auth/profiles/{profile_id}/dsp-advertisers` - List DSP advertisers under profile
+
+### Account Management
+- `GET /api/v1/accounts` - List all connected accounts with pagination
+- `GET /api/v1/accounts/{account_id}` - Get detailed account information
+- `DELETE /api/v1/accounts/{account_id}/disconnect` - Disconnect account
+- `GET /api/v1/accounts/health` - Get health status of all accounts
+- `POST /api/v1/accounts/{account_id}/reauthorize` - Re-authorize expired account
+- `POST /api/v1/accounts/batch` - Perform batch operations on accounts
+- `POST /api/v1/accounts/refresh-token` - Manual token refresh for current user
 
 ### Amazon Ads API
 - `GET /api/v1/accounts/amazon-ads-accounts` - List advertising accounts (v3.0 format)
 - `GET /api/v1/accounts/amazon-profiles` - Legacy profiles endpoint
-- `GET /api/v1/accounts/{id}/campaigns` - Get DSP campaigns
-- `POST /api/v1/accounts/{id}/batch` - Batch account operations
+- `GET /api/v1/accounts/all-account-types` - List all account types (development mode)
+- `GET /api/v1/accounts/all-account-types-old` - List all account types with database sync
+
+### Account Types API
+- `GET /api/v1/accounts/sponsored-ads` - Get Sponsored Ads accounts
+- `GET /api/v1/accounts/dsp` - Get DSP advertisers
+- `GET /api/v1/accounts/amc` - Get AMC accounts
+- `GET /api/v1/accounts/amc-instances` - Get AMC instances
+- `POST /api/v1/accounts/{account_id}/set-managed` - Mark account as managed
+- `GET /api/v1/accounts/relationships/{account_id}` - Get account relationships
+- `POST /api/v1/accounts/sync` - Trigger account synchronization
 
 ### DSP Seats API
 - `GET /api/v1/accounts/dsp/{advertiser_id}/seats` - Get DSP advertiser seats
@@ -212,20 +271,43 @@ python test_auth_status.py
   - Query parameters: `limit`, `offset`, `status_filter` (success/failed/partial)
   - Returns paginated sync history with timestamps and error details
 
-### User Management
+### User Management (Clerk + Database)
 - `GET /api/v1/users/me` - Current user profile
-- `POST /api/v1/webhooks/clerk` - Clerk webhook handler
+- `GET /api/v1/users/me/accounts` - User's connected accounts
+- `GET /api/v1/users/session` - Current session information
+- `POST /api/v1/webhooks/clerk` - Clerk webhook handler for user sync
+
+### Settings & Configuration
+- `GET /api/v1/settings` - Get user settings
+- `PUT /api/v1/settings` - Update user settings
+
+### Development & Testing
+- `GET /api/v1/test/health` - Test endpoint health
+- `GET /api/v1/test/tokens/status` - Test token status
+- `GET /api/v1/test/amazon/profiles` - Test Amazon profiles
+- `GET /api/v1/test/amazon/accounts` - Test Amazon accounts
+- `GET /api/v1/test/amazon/dsp-advertisers` - Test DSP advertisers
+- `GET /api/v1/test/amazon/dsp-seats/{advertiser_id}` - Test DSP seats
+- `GET /api/v1/test/database/accounts` - Test database accounts
+- `POST /api/v1/test/amazon/sync-test` - Test account synchronization
+- **Note**: All test endpoints require `X-Admin-Key` header
 
 ## Environment Variables
 
 Required in `.env`:
-- `AMAZON_CLIENT_ID` - Amazon OAuth client ID
-- `AMAZON_CLIENT_SECRET` - Amazon OAuth client secret
-- `FERNET_KEY` - Encryption key for tokens
-- `SUPABASE_URL` - Supabase project URL
-- `SUPABASE_KEY` - Supabase service key
-- `CLERK_SECRET_KEY` - Clerk authentication
-- `CLERK_WEBHOOK_SECRET` - Webhook verification
+- **Amazon OAuth Configuration**:
+  - `AMAZON_CLIENT_ID` - Amazon OAuth client ID
+  - `AMAZON_CLIENT_SECRET` - Amazon OAuth client secret
+  - `FERNET_KEY` - Encryption key for Amazon tokens
+- **Database Configuration**:
+  - `SUPABASE_URL` - Supabase project URL
+  - `SUPABASE_KEY` - Supabase service key
+- **Clerk Authentication**:
+  - `CLERK_SECRET_KEY` - Clerk authentication secret
+  - `CLERK_WEBHOOK_SECRET` - Webhook verification secret
+- **Application Configuration**:
+  - `FRONTEND_URL` - Frontend application URL for CORS and redirects
+  - `ADMIN_KEY` - Admin key for protected endpoints
 
 ## Amazon Advertising API Details
 

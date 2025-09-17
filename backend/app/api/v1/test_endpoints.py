@@ -223,6 +223,7 @@ async def test_dsp_seats(
     advertiser_id: str,
     admin_key: Optional[str] = Header(None, alias="X-Admin-Key"),
     profile_id: Optional[str] = Query(None, description="Profile ID for the advertiser"),
+    parent_entity_id: Optional[str] = Query(None, description="Parent entity ID for advertiser context"),
     max_results: int = Query(50, ge=1, le=200, description="Max seats to return"),
     exchange_ids: Optional[List[str]] = Query(None, description="Filter by exchange IDs")
 ):
@@ -258,6 +259,7 @@ async def test_dsp_seats(
             access_token=access_token,
             advertiser_id=advertiser_id,
             profile_id=profile_id,
+            parent_entity_id=parent_entity_id,
             max_results=max_results,
             exchange_ids=exchange_ids
         )
@@ -269,6 +271,7 @@ async def test_dsp_seats(
             "endpoint": f"POST /dsp/v1/seats/advertisers/{advertiser_id}/list",
             "advertiser_id": advertiser_id,
             "profile_id": profile_id,
+            "parent_entity_id": parent_entity_id,
             "total_seats": len(seats),
             "exchange_ids_filter": exchange_ids,
             "seats": seats,

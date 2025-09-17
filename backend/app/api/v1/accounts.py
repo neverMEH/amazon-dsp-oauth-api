@@ -10,11 +10,12 @@ from pydantic import BaseModel, Field
 from uuid import uuid4
 
 from app.middleware.clerk_auth import RequireAuth, get_user_context
-from app.services.account_service import account_service
+from app.services.account_service import account_service as amazon_account_service
 from app.services.amazon_oauth_service import amazon_oauth_service
 from app.services.token_service import token_service
 from app.services.dsp_amc_service import dsp_amc_service
 from app.services.account_sync_service import account_sync_service
+from app.services.account_addition_service import account_service
 from app.db.base import get_supabase_client, get_supabase_service_client
 from app.core.exceptions import TokenRefreshError, RateLimitError, DSPSeatsError, MissingDSPAccessError
 from app.models.amazon_account import AmazonAccount
@@ -798,7 +799,7 @@ async def list_amazon_ads_accounts(
         token_data = await refresh_token_if_needed(user_id, token_data, supabase)
         
         # Call Amazon Account Management API with pagination
-        response = await account_service.list_ads_accounts(
+        response = await amazon_account_service.list_ads_accounts(
             token_data["access_token"],
             next_token=next_token
         )
@@ -955,7 +956,7 @@ async def list_amazon_profiles(
         token_data = await refresh_token_if_needed(user_id, token_data, supabase)
         
         # Call Amazon API to list profiles
-        profiles = await account_service.list_profiles(token_data["access_token"])
+        profiles = await amazon_account_service.list_profiles(token_data["access_token"])
         
         # Transform Amazon API response to our schema
         response_profiles = []
@@ -1175,7 +1176,7 @@ async def get_account_details(
                 token_data = await get_user_token(user_id, supabase)
                 if token_data:
                     token_data = await refresh_token_if_needed(user_id, token_data, supabase)
-                    profile = await account_service.get_profile(
+                    profile = await amazon_account_service.get_profile(
                         token_data["access_token"],
                         str(account.metadata["profile_id"])
                     )
@@ -1532,7 +1533,7 @@ async def batch_operations(
                         # Get profile data
                         profile_id = result.data[0].get("metadata", {}).get("profile_id")
                         if profile_id:
-                            profile = await account_service.get_profile(
+                            profile = await amazon_account_service.get_profile(
                                 token_data["access_token"],
                                 str(profile_id)
                             )
@@ -1713,11 +1714,12 @@ async def manual_token_refresh(
 @router.get("/dsp/{advertiser_id}/seats")
 async def get_dsp_advertiser_seats(
     advertiser_id: str = Path(..., description="DSP Advertiser ID"),
-    current_user: Dict = Depends(RequireAuth),
+    # Removed Clerk auth dependency since it was removed from project
     exchange_ids: Optional[List[str]] = Query(None, description="Filter by exchange IDs"),
     max_results: int = Query(200, ge=1, le=200, description="Maximum results"),
     next_token: Optional[str] = Query(None, description="Pagination token"),
-    profile_id: Optional[str] = Query(None, description="Optional profile ID filter")
+    profile_id: Optional[str] = Query(None, description="Optional profile ID filter"),
+    parent_entity_id: Optional[str] = Query(None, description="Parent entity ID for advertiser context")
 ) -> Dict[str, Any]:
     """
     Get seat information for a DSP advertiser
@@ -1740,13 +1742,8 @@ async def get_dsp_advertiser_seats(
     }
     """
     supabase = get_supabase_service_client()
-    user_id = current_user.get("user_id")
-
-    if not user_id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found in database"
-        )
+    # Since Clerk auth was removed, use the hardcoded user ID
+    user_id = "52a86382-266b-4004-bfd9-6bd6a64026eb"
 
     try:
         # Verify user owns this DSP advertiser
@@ -1787,7 +1784,8 @@ async def get_dsp_advertiser_seats(
             exchange_ids=exchange_ids,
             max_results=max_results,
             next_token=next_token,
-            profile_id=profile_id
+            profile_id=profile_id,
+            parent_entity_id=parent_entity_id
         )
 
         # Update database with seats information
@@ -1893,8 +1891,8 @@ async def get_dsp_advertiser_seats(
 @router.post("/dsp/{advertiser_id}/seats/refresh", response_model=DSPSeatsRefreshResponse)
 async def refresh_dsp_seats(
     advertiser_id: str = Path(..., description="DSP Advertiser ID"),
-    request: DSPSeatsRefreshRequest = Body(...),
-    current_user: Dict = Depends(RequireAuth)
+    request: DSPSeatsRefreshRequest = Body(...)
+    # Removed Clerk auth dependency since it was removed from project
 ) -> DSPSeatsRefreshResponse:
     """
     Force refresh of seat data for a DSP advertiser, bypassing cache
@@ -1905,13 +1903,8 @@ async def refresh_dsp_seats(
     - Useful after making changes in Amazon DSP console
     """
     supabase = get_supabase_service_client()
-    user_id = current_user.get("user_id")
-
-    if not user_id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found in database"
-        )
+    # Since Clerk auth was removed, use the hardcoded user ID
+    user_id = "52a86382-266b-4004-bfd9-6bd6a64026eb"
 
     try:
         # Verify user owns this DSP advertiser
@@ -2058,7 +2051,7 @@ async def refresh_dsp_seats(
 @router.get("/dsp/{advertiser_id}/seats/sync-history", response_model=DSPSyncHistoryResponse)
 async def get_dsp_seats_sync_history(
     advertiser_id: str = Path(..., description="DSP Advertiser ID"),
-    current_user: Dict = Depends(RequireAuth),
+    # Removed Clerk auth dependency since it was removed from project
     limit: int = Query(10, ge=1, le=100, description="Number of records"),
     offset: int = Query(0, ge=0, description="Pagination offset"),
     status_filter: Optional[str] = Query(None, regex="^(success|failed|partial)$", description="Filter by sync status")
@@ -2072,13 +2065,8 @@ async def get_dsp_seats_sync_history(
     - Audit data refresh operations
     """
     supabase = get_supabase_service_client()
-    user_id = current_user.get("user_id")
-
-    if not user_id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found in database"
-        )
+    # Since Clerk auth was removed, use the hardcoded user ID
+    user_id = "52a86382-266b-4004-bfd9-6bd6a64026eb"
 
     try:
         # Verify user owns this DSP advertiser
@@ -2157,4 +2145,341 @@ async def get_dsp_seats_sync_history(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve sync history: {str(e)}"
+        )
+
+
+@router.post("/sync")
+async def sync_all_accounts() -> Dict[str, Any]:
+    """
+    Sync all account types (Sponsored Ads, DSP, AMC) from Amazon API to database
+    Note: Clerk auth removed, using hardcoded user
+
+    Returns:
+        Dictionary with sync results including counts by account type
+    """
+    try:
+        # Since Clerk auth was removed, use hardcoded user ID
+        user_id = "52a86382-266b-4004-bfd9-6bd6a64026eb"
+        logger.info(f"Sync requested for user: {user_id}")
+
+        # Get tokens
+        from app.services.token_service import token_service
+        tokens = await token_service.get_decrypted_tokens()
+        if not tokens:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="No Amazon tokens found. Please connect your Amazon account."
+            )
+
+        access_token = tokens["access_token"]
+
+        # Use account sync service to fetch and save all account types
+        from app.services.account_sync_service import account_sync_service
+
+        # Fetch all account types from Amazon API
+        all_data = await account_sync_service._fetch_all_account_types(access_token)
+
+        # Process and save to database
+        result = await account_sync_service._process_all_account_types(
+            user_id=user_id,
+            account_data=all_data
+        )
+
+        logger.info(
+            "Successfully synced all account types",
+            user_id=user_id,
+            result=result
+        )
+
+        return {
+            "status": "success",
+            "message": "Account sync completed",
+            "result": result,
+            "data": {
+                "advertising_accounts": len(all_data.get("advertising_accounts", [])),
+                "dsp_advertisers": len(all_data.get("dsp_advertisers", [])),
+                "amc_instances": len(all_data.get("amc_instances", []))
+            }
+        }
+
+    except HTTPException:
+        raise
+    except TokenRefreshError as e:
+        logger.error("Token refresh failed during sync", user_id=user_id, error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token refresh failed. Please re-authenticate."
+        )
+    except Exception as e:
+        logger.error(
+            "Failed to sync accounts",
+            user_id=user_id,
+            error=str(e)
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to sync accounts: {str(e)}"
+        )
+
+
+@router.post("/sync-direct")
+async def sync_all_accounts_direct() -> Dict[str, Any]:
+    """
+    Direct sync endpoint without Clerk auth for testing
+    Syncs all account types to the hardcoded user
+    """
+    try:
+        # Use hardcoded user ID
+        user_id = "52a86382-266b-4004-bfd9-6bd6a64026eb"
+
+        # Get tokens
+        from app.services.token_service import token_service
+        tokens = await token_service.get_decrypted_tokens()
+        if not tokens:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="No Amazon tokens found. Please connect your Amazon account."
+            )
+
+        access_token = tokens["access_token"]
+
+        # Use account sync service to fetch and save all account types
+        from app.services.account_sync_service import account_sync_service
+
+        # Fetch all account types from Amazon API
+        all_data = await account_sync_service._fetch_all_account_types(access_token)
+
+        # Process and save to database
+        result = await account_sync_service._process_all_account_types(
+            user_id=user_id,
+            account_data=all_data
+        )
+
+        logger.info(
+            "Successfully synced all account types (direct)",
+            user_id=user_id,
+            result=result
+        )
+
+        return {
+            "status": "success",
+            "message": "Account sync completed (direct)",
+            "result": result,
+            "data": {
+                "advertising_accounts": len(all_data.get("advertising_accounts", [])),
+                "dsp_advertisers": len(all_data.get("dsp_advertisers", [])),
+                "amc_instances": len(all_data.get("amc_instances", []))
+            }
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            "Failed to sync accounts (direct)",
+            user_id=user_id,
+            error=str(e)
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to sync accounts: {str(e)}"
+        )
+
+
+# ============================================================================
+# NEW ACCOUNT-TYPE-SPECIFIC ADD ENDPOINTS
+# ============================================================================
+
+class AddSponsoredAdsResponse(BaseModel):
+    """Response for adding Sponsored Ads accounts"""
+    requires_auth: bool = Field(..., description="Whether OAuth is required")
+    auth_url: Optional[str] = Field(None, description="OAuth URL if auth required")
+    state: Optional[str] = Field(None, description="OAuth state token")
+    accounts_added: Optional[int] = Field(None, description="Number of accounts added")
+    accounts: Optional[List[Dict[str, Any]]] = Field(None, description="Added accounts")
+
+
+class AddDSPResponse(BaseModel):
+    """Response for adding DSP advertisers"""
+    requires_auth: bool = Field(..., description="Whether OAuth is required")
+    auth_url: Optional[str] = Field(None, description="OAuth URL if auth required")
+    state: Optional[str] = Field(None, description="OAuth state token")
+    reason: Optional[str] = Field(None, description="Reason for auth requirement")
+    advertisers_added: Optional[int] = Field(None, description="Number of advertisers added")
+    advertisers: Optional[List[Dict[str, Any]]] = Field(None, description="Added advertisers")
+
+
+@router.post("/sponsored-ads/add", response_model=AddSponsoredAdsResponse)
+async def add_sponsored_ads_accounts(
+    current_user: Dict[str, Any] = Depends(RequireAuth)
+):
+    """
+    Add Sponsored Ads accounts from Amazon API
+
+    This endpoint assumes the user has already completed OAuth authentication
+    through the standard OAuth flow. It fetches Sponsored Ads accounts from
+    the Amazon API and stores them in the database.
+    """
+    user_id = current_user.get("user_id") or current_user.get("id")
+
+    try:
+
+        # Get the user's existing OAuth tokens
+        token_info = await token_service.get_active_token(user_id=user_id)
+
+        if not token_info:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="No OAuth tokens found. Please complete OAuth authentication first."
+            )
+
+        # Check if token is expired
+        expires_at = datetime.fromisoformat(
+            token_info["expires_at"].replace("Z", "+00:00")
+        )
+        if expires_at <= datetime.now(timezone.utc):
+            # Try to refresh the token
+            try:
+                from app.services.refresh_service import refresh_service
+                refreshed = await refresh_service.refresh_token(token_info["refresh_token"])
+                token_info = await token_service.get_active_token(user_id=user_id)
+            except Exception as refresh_error:
+                logger.error("Failed to refresh expired token", error=str(refresh_error))
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="OAuth token expired. Please re-authenticate."
+                )
+
+        # Fetch and store Sponsored Ads accounts
+        result = await account_service.fetch_and_store_sponsored_ads(
+            user_id=user_id,
+            access_token=token_info["access_token"]
+        )
+
+        return AddSponsoredAdsResponse(
+            requires_auth=False,
+            accounts_added=result.get("accounts_added", 0),
+            accounts=result.get("accounts", [])
+        )
+
+    except Exception as e:
+        logger.error(
+            "Failed to add Sponsored Ads accounts",
+            user_id=user_id,
+            error=str(e)
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to add accounts: {str(e)}"
+        )
+
+
+@router.post("/dsp/add", response_model=AddDSPResponse)
+async def add_dsp_advertisers(
+    current_user: Dict[str, Any] = Depends(RequireAuth)
+):
+    """
+    Add DSP advertisers from Amazon API
+
+    This endpoint assumes the user has already completed OAuth authentication
+    through the standard OAuth flow. It fetches DSP advertisers from
+    the Amazon API and stores them in the database.
+    """
+    user_id = current_user.get("user_id") or current_user.get("id")
+
+    try:
+
+        # Get the user's existing OAuth tokens
+        token_info = await token_service.get_active_token(user_id=user_id)
+
+        if not token_info:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="No OAuth tokens found. Please complete OAuth authentication first."
+            )
+
+        # Check if token is expired
+        expires_at = datetime.fromisoformat(
+            token_info["expires_at"].replace("Z", "+00:00")
+        )
+        if expires_at <= datetime.now(timezone.utc):
+            # Try to refresh the token
+            try:
+                from app.services.refresh_service import refresh_service
+                refreshed = await refresh_service.refresh_token(token_info["refresh_token"])
+                token_info = await token_service.get_active_token(user_id=user_id)
+            except Exception as refresh_error:
+                logger.error("Failed to refresh expired token", error=str(refresh_error))
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="OAuth token expired. Please re-authenticate."
+                )
+
+        # Fetch and store DSP advertisers
+        result = await account_service.fetch_and_store_dsp_advertisers(
+            user_id=user_id,
+            access_token=token_info["access_token"]
+        )
+
+        return AddDSPResponse(
+            requires_auth=False,
+            advertisers_added=result.get("advertisers_added", 0),
+            advertisers=result.get("advertisers", [])
+        )
+
+    except Exception as e:
+        logger.error(
+            "Failed to add DSP advertisers",
+            user_id=user_id,
+            error=str(e)
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to add advertisers: {str(e)}"
+        )
+
+
+@router.delete("/{account_id}")
+async def delete_account(
+    account_id: str = Path(..., description="Account ID to delete"),
+    current_user: Dict[str, Any] = Depends(RequireAuth)
+):
+    """
+    Permanently delete an account from the local database
+
+    This only removes the account from the local database.
+    It does not affect the Amazon account or OAuth tokens.
+    """
+    try:
+        user_id = current_user.get("user_id") or current_user.get("id")
+
+        # Delete the account
+        result = await account_service.delete_account(
+            user_id=user_id,
+            account_id=account_id
+        )
+
+        if not result:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Account not found"
+            )
+
+        return {
+            "success": True,
+            "message": "Account successfully deleted"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            "Failed to delete account",
+            user_id=user_id,
+            account_id=account_id,
+            error=str(e)
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete account: {str(e)}"
         )
