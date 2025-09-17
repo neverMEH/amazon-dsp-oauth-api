@@ -498,12 +498,20 @@ class AccountSyncService:
         """
         amazon_account_id = advertiser_data.get("advertiserId")
 
+        # Handle both old and new response formats
+        # New format: name, country, timezone
+        # Old format: advertiserName, countryCode, timeZone
+        advertiser_name = advertiser_data.get("name") or advertiser_data.get("advertiserName", "Unknown DSP")
+        country = advertiser_data.get("country") or advertiser_data.get("countryCode")
+        timezone = advertiser_data.get("timezone") or advertiser_data.get("timeZone")
+
         # Map DSP status to database status
         status_map = {
             "ACTIVE": "active",
             "SUSPENDED": "suspended",
             "INACTIVE": "inactive"
         }
+        # Status might not be in new format, default to active
         api_status = advertiser_data.get("advertiserStatus", "ACTIVE")
 
         # Check if account exists
@@ -515,19 +523,25 @@ class AccountSyncService:
 
         account_dict = {
             "user_id": user_id,
-            "account_name": advertiser_data.get("advertiserName", "Unknown DSP"),
+            "account_name": advertiser_name,
             "amazon_account_id": amazon_account_id,
-            "marketplace_id": advertiser_data.get("countryCode"),
+            "marketplace_id": country,
             "account_type": "dsp",  # Set type to DSP
             "status": status_map.get(api_status, "active"),
             "last_synced_at": datetime.now(timezone.utc).isoformat(),
             "metadata": {
+                # Store all fields from the API response
                 "advertiser_type": advertiser_data.get("advertiserType"),
-                "country_code": advertiser_data.get("countryCode"),
+                "country": country,
+                "country_code": country,  # Keep for backward compatibility
                 "currency": advertiser_data.get("currency"),
-                "timezone": advertiser_data.get("timeZone"),
+                "timezone": timezone,
+                "url": advertiser_data.get("url"),
+                "profile_id": advertiser_data.get("profileId"),  # Added by our fetch method
                 "created_date": advertiser_data.get("createdDate"),
-                "api_status": api_status
+                "api_status": api_status,
+                # Store original response for debugging
+                "raw_response": advertiser_data
             }
         }
 

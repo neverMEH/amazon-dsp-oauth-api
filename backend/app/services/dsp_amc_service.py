@@ -499,8 +499,9 @@ class DSPAMCService:
             tasks.append(account_service.list_ads_accounts(access_token))
             task_names.append("advertising_accounts")
 
+        # For DSP, we need to get profiles first to get profile IDs
         if include_dsp:
-            tasks.append(self.list_dsp_advertisers(access_token))
+            tasks.append(self._fetch_all_dsp_advertisers(access_token))
             task_names.append("dsp_advertisers")
 
         if include_amc:
@@ -535,6 +536,80 @@ class DSPAMCService:
         )
 
         return account_data
+
+    async def _fetch_all_dsp_advertisers(self, access_token: str) -> List[Dict]:
+        """
+        Fetch DSP advertisers for all available profiles
+
+        Since DSP advertisers require a profile ID, we need to:
+        1. Get all profiles
+        2. For each profile, fetch DSP advertisers
+        3. Combine the results
+
+        Args:
+            access_token: Valid access token
+
+        Returns:
+            List of all DSP advertisers across all profiles
+        """
+        from app.services.account_service import account_service
+
+        try:
+            # First get all profiles
+            profiles_response = await account_service.list_profiles(access_token)
+
+            # Handle both list and dict response formats
+            if isinstance(profiles_response, list):
+                profiles = profiles_response
+            elif isinstance(profiles_response, dict):
+                profiles = profiles_response.get("profiles", [])
+            else:
+                logger.warning("Unexpected profiles response format")
+                return []
+
+            if not profiles:
+                logger.info("No profiles found, cannot fetch DSP advertisers")
+                return []
+
+            # Fetch DSP advertisers for each profile
+            all_dsp_advertisers = []
+
+            for profile in profiles:
+                profile_id = str(profile.get("profileId"))
+                if not profile_id:
+                    continue
+
+                try:
+                    # Call with the fixed signature
+                    result = await self.list_dsp_advertisers(
+                        access_token=access_token,
+                        profile_id=profile_id,
+                        count=100  # Max per request
+                    )
+
+                    # Extract advertisers from response
+                    advertisers = result.get("response", [])
+
+                    # Add profile info to each advertiser
+                    for advertiser in advertisers:
+                        advertiser["profileId"] = profile_id
+                        advertiser["countryCode"] = profile.get("countryCode")
+
+                    all_dsp_advertisers.extend(advertisers)
+
+                except Exception as e:
+                    logger.debug(
+                        f"Failed to fetch DSP advertisers for profile {profile_id}: {str(e)}",
+                        profile_id=profile_id
+                    )
+                    # Continue with other profiles
+
+            logger.info(f"Fetched {len(all_dsp_advertisers)} DSP advertisers across {len(profiles)} profiles")
+            return all_dsp_advertisers
+
+        except Exception as e:
+            logger.error(f"Error fetching DSP advertisers: {str(e)}")
+            return []
 
 
 # Create singleton instance
