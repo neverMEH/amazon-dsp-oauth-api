@@ -140,61 +140,30 @@ async def callback(
         if not is_valid:
             raise InvalidStateTokenError(state)
         
+        # Get user context if available
+        user_id = None
+        if current_user:
+            try:
+                user_context = get_user_context(current_user)
+                user_id = user_context.get("user_id") or user_context.get("id")
+                logger.info("OAuth callback with authenticated user", user_id=user_id[:8] + "..." if user_id else None)
+            except Exception as e:
+                logger.warning("Failed to get user context", error=str(e))
+
         # Exchange code for tokens
         token_data = await oauth_client.exchange_code_for_tokens(code)
-        
-        # Store encrypted tokens
-        stored_token = await token_service.store_tokens(token_data)
 
-        # Fetch Amazon account data using the new access token
-        try:
-            access_token = token_data.get("access_token")
-            if access_token:
-                logger.info("Fetching Amazon account data after OAuth callback")
+        # Store encrypted tokens with user_id if available
+        stored_token = await token_service.store_tokens(token_data, user_id=user_id)
 
-                # Fetch all types of accounts (advertising, DSP, AMC)
-                account_data = await dsp_amc_service.list_all_account_types(
-                    access_token=access_token,
-                    include_regular=True,
-                    include_dsp=True,
-                    include_amc=True
-                )
+        # For account-type-specific OAuth flow:
+        # We don't fetch accounts here. The frontend will retry the add operation
+        # after the OAuth is complete, and that's when accounts will be fetched
+        # based on the specific account type requested (Sponsored Ads or DSP)
 
-                logger.info("Successfully fetched Amazon accounts",
-                          advertising_count=len(account_data.get("advertising_accounts", [])),
-                          dsp_count=len(account_data.get("dsp_advertisers", [])),
-                          amc_count=len(account_data.get("amc_instances", [])))
-
-                # Handle user context if available
-                user_context = None
-                clerk_user_id = None
-
-                if current_user:
-                    try:
-                        user_context = get_user_context(current_user)
-                        clerk_user_id = user_context.get("clerk_user_id")
-                        logger.info("OAuth callback with authenticated user",
-                                  clerk_user_id=clerk_user_id[:8] + "..." if clerk_user_id else None)
-                    except Exception as e:
-                        logger.warning("Failed to get user context", error=str(e))
-
-                # TODO: Create user and account records with proper user association
-                # If clerk_user_id is available, associate the tokens and accounts with that user
-                # If not, we may need to handle this case differently (e.g., store temporarily)
-
-                if clerk_user_id:
-                    logger.info("User authenticated - ready to associate Amazon accounts with user")
-                    # TODO: Implementation needed:
-                    # 1. Update stored_token to include user_id
-                    # 2. Create account records for each fetched account
-                    # 3. Associate accounts with the user
-                else:
-                    logger.warning("No user context available - Amazon accounts fetched but not associated")
-
-        except Exception as e:
-            # Don't fail the OAuth flow if account fetching fails
-            # Just log the error and continue
-            logger.warning("Failed to fetch Amazon account data after OAuth", error=str(e))
+        logger.info("OAuth completed successfully, tokens stored",
+                   has_user=bool(user_id),
+                   token_id=stored_token.get("id"))
 
         # Redirect to frontend callback handler with success
         # The frontend will handle displaying the tokens

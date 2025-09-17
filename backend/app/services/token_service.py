@@ -91,13 +91,14 @@ class TokenService:
             logger.error("Failed to validate state token", error=str(e))
             return False
     
-    async def store_tokens(self, token_data: Dict) -> Dict:
+    async def store_tokens(self, token_data: Dict, user_id: Optional[str] = None) -> Dict:
         """
         Store encrypted OAuth tokens
-        
+
         Args:
             token_data: Dict containing access_token, refresh_token, etc.
-            
+            user_id: Optional user ID to associate tokens with
+
         Returns:
             Stored token record
         """
@@ -105,12 +106,18 @@ class TokenService:
             # Encrypt tokens
             encrypted_access = token_encryption.encrypt_token(token_data["access_token"])
             encrypted_refresh = token_encryption.encrypt_token(token_data["refresh_token"])
-            
-            # Deactivate any existing active tokens
-            self.db.table("oauth_tokens").update(
-                {"is_active": False}
-            ).eq("is_active", True).execute()
-            
+
+            # If user_id provided, deactivate only that user's tokens
+            # Otherwise deactivate all tokens (backward compatibility)
+            if user_id:
+                self.db.table("oauth_tokens").update(
+                    {"is_active": False}
+                ).eq("is_active", True).eq("user_id", user_id).execute()
+            else:
+                self.db.table("oauth_tokens").update(
+                    {"is_active": False}
+                ).eq("is_active", True).execute()
+
             # Store new tokens
             data = {
                 "access_token": encrypted_access,
@@ -121,6 +128,10 @@ class TokenService:
                 "is_active": True,
                 "refresh_count": 0
             }
+
+            # Add user_id if provided
+            if user_id:
+                data["user_id"] = user_id
             
             result = self.db.table("oauth_tokens").insert(data).execute()
             
