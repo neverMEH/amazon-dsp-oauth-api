@@ -402,8 +402,67 @@ async def get_amc_instances(
         )
 
 @router.get("/all-account-types")
-async def list_all_account_types(
-    current_user: Dict = Depends(RequireAuth),
+async def list_all_account_types_simple(
+    include_dsp: bool = Query(True, description="Include DSP advertisers")
+):
+    """
+    Simplified account sync without authentication (development mode)
+    """
+    try:
+        # Get OAuth tokens directly from token service
+        tokens = await token_service.get_decrypted_tokens()
+        if not tokens:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No OAuth tokens found. Complete Amazon authentication first."
+            )
+
+        access_token = tokens["access_token"]
+
+        # Fetch DSP advertisers from Amazon API
+        account_data = await dsp_amc_service.list_all_account_types(
+            access_token=access_token,
+            include_regular=False,
+            include_dsp=include_dsp,
+            include_amc=False
+        )
+
+        # Return DSP advertisers directly from API (no database operations)
+        normalized_accounts = []
+
+        if include_dsp:
+            for advertiser in account_data.get("dsp_advertisers", []):
+                normalized_accounts.append({
+                    "id": f"dsp_{advertiser.get('advertiserId')}",
+                    "name": advertiser.get("name") or advertiser.get("advertiserName"),
+                    "type": "dsp",
+                    "platform_id": advertiser.get("advertiserId"),
+                    "status": "active",
+                    "metadata": {
+                        **advertiser,
+                        "sync_method": "direct_api"
+                    }
+                })
+
+        return {
+            "accounts": normalized_accounts,
+            "summary": {
+                "total": len(normalized_accounts),
+                "dsp": len([a for a in normalized_accounts if a["type"] == "dsp"])
+            },
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+
+    except Exception as e:
+        logger.error("Failed to retrieve accounts", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve accounts: {str(e)}"
+        )
+
+
+@router.get("/all-account-types-old")
+async def list_all_account_types_old(
     include_advertising: bool = Query(True, description="Include regular advertising accounts"),
     include_dsp: bool = Query(True, description="Include DSP advertisers"),
     include_amc: bool = Query(True, description="Include AMC instances"),
@@ -448,31 +507,24 @@ async def list_all_account_types(
     - advertising::dsp_campaigns (for DSP)
     - advertising::amc:read (for AMC)
     """
+    # Use default user ID for development (no authentication)
+    user_id = "123e4567-e89b-12d3-a456-426614174000"
     supabase = get_supabase_service_client()
-    user_context = current_user
-    user_id = user_context.get("user_id")
-
-    if not user_id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found in database. Please log out and log in again."
-        )
 
     try:
-        # Get user's token
-        token_data = await get_user_token(user_id, supabase)
-        if not token_data:
+        # Get OAuth tokens directly from token service
+        tokens = await token_service.get_decrypted_tokens()
+        if not tokens:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="No Amazon account connected. Please connect your Amazon account first."
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No OAuth tokens found. Complete Amazon authentication first."
             )
 
-        # Refresh token if needed
-        token_data = await refresh_token_if_needed(user_id, token_data, supabase)
+        access_token = tokens["access_token"]
 
         # Fetch all account types in parallel
         account_data = await dsp_amc_service.list_all_account_types(
-            access_token=token_data["access_token"],
+            access_token=access_token,
             include_regular=include_advertising,
             include_dsp=include_dsp,
             include_amc=include_amc

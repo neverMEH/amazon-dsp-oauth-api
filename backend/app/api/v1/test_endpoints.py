@@ -380,6 +380,88 @@ async def test_sync_accounts(
         )
 
 
+@router.get("/sync-endpoint")
+async def test_sync_endpoint(
+    admin_key: Optional[str] = Header(None, alias="X-Admin-Key"),
+    include_dsp: bool = Query(True, description="Include DSP advertisers"),
+    include_regular: bool = Query(False, description="Include regular accounts"),
+    include_amc: bool = Query(False, description="Include AMC instances")
+):
+    """Test the full sync endpoint flow without Clerk authentication"""
+    validate_admin_key(admin_key)
+
+    try:
+        tokens = await token_service.get_decrypted_tokens()
+        if not tokens:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No OAuth tokens found. Complete authentication first."
+            )
+
+        # Import the sync service
+        from app.services.account_sync_service import account_sync_service
+        from app.services.dsp_amc_service import dsp_amc_service
+
+        access_token = tokens["access_token"]
+        user_id = "123e4567-e89b-12d3-a456-426614174000"  # Test user ID
+
+        # Get all account types from Amazon APIs
+        all_data = await dsp_amc_service.list_all_account_types(
+            access_token=access_token,
+            include_regular=include_regular,
+            include_dsp=include_dsp,
+            include_amc=include_amc
+        )
+
+        normalized_accounts = []
+
+        # Process DSP advertisers using the updated sync service
+        if include_dsp:
+            for advertiser in all_data.get("dsp_advertisers", []):
+                try:
+                    # Use the updated account_sync_service that properly maps to dedicated columns
+                    success, was_created = await account_sync_service._upsert_dsp_advertiser(user_id, advertiser)
+
+                    if success:
+                        normalized_accounts.append({
+                            "id": f"dsp_{advertiser.get('advertiserId')}",
+                            "name": advertiser.get("name") or advertiser.get("advertiserName"),
+                            "type": "dsp",
+                            "platform_id": advertiser.get("advertiserId"),
+                            "status": "active",
+                            "metadata": {
+                                **advertiser,
+                                "was_created": was_created,
+                                "sync_method": "account_sync_service"
+                            }
+                        })
+                    else:
+                        logger.error(f"Failed to sync DSP advertiser {advertiser.get('advertiserId')}")
+                except Exception as e:
+                    logger.error(f"Error syncing DSP advertiser {advertiser.get('advertiserId')}: {str(e)}")
+                    # Continue with other advertisers even if one fails
+
+        return {
+            "status": "success",
+            "operation": "test_sync_endpoint",
+            "accounts": normalized_accounts,
+            "total_accounts": len(normalized_accounts),
+            "account_types_processed": {
+                "dsp": len([a for a in normalized_accounts if a["type"] == "dsp"]),
+                "advertising": len([a for a in normalized_accounts if a["type"] == "advertising"]),
+                "amc": len([a for a in normalized_accounts if a["type"] == "amc"])
+            },
+            "retrieved_at": datetime.now(timezone.utc).isoformat()
+        }
+
+    except Exception as e:
+        logger.error("Failed to test sync endpoint", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Test sync endpoint failed: {str(e)}"
+        )
+
+
 @router.post("/database/sync-dsp")
 async def test_sync_dsp_to_database(
     admin_key: Optional[str] = Header(None, alias="X-Admin-Key"),
@@ -454,4 +536,86 @@ async def test_sync_dsp_to_database(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Account sync test failed: {str(e)}"
+        )
+
+
+@router.get("/sync-endpoint")
+async def test_sync_endpoint(
+    admin_key: Optional[str] = Header(None, alias="X-Admin-Key"),
+    include_dsp: bool = Query(True, description="Include DSP advertisers"),
+    include_regular: bool = Query(False, description="Include regular accounts"),
+    include_amc: bool = Query(False, description="Include AMC instances")
+):
+    """Test the full sync endpoint flow without Clerk authentication"""
+    validate_admin_key(admin_key)
+
+    try:
+        tokens = await token_service.get_decrypted_tokens()
+        if not tokens:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No OAuth tokens found. Complete authentication first."
+            )
+
+        # Import the sync service
+        from app.services.account_sync_service import account_sync_service
+        from app.services.dsp_amc_service import dsp_amc_service
+
+        access_token = tokens["access_token"]
+        user_id = "123e4567-e89b-12d3-a456-426614174000"  # Test user ID
+
+        # Get all account types from Amazon APIs
+        all_data = await dsp_amc_service.list_all_account_types(
+            access_token=access_token,
+            include_regular=include_regular,
+            include_dsp=include_dsp,
+            include_amc=include_amc
+        )
+
+        normalized_accounts = []
+
+        # Process DSP advertisers using the updated sync service
+        if include_dsp:
+            for advertiser in all_data.get("dsp_advertisers", []):
+                try:
+                    # Use the updated account_sync_service that properly maps to dedicated columns
+                    success, was_created = await account_sync_service._upsert_dsp_advertiser(user_id, advertiser)
+
+                    if success:
+                        normalized_accounts.append({
+                            "id": f"dsp_{advertiser.get('advertiserId')}",
+                            "name": advertiser.get("name") or advertiser.get("advertiserName"),
+                            "type": "dsp",
+                            "platform_id": advertiser.get("advertiserId"),
+                            "status": "active",
+                            "metadata": {
+                                **advertiser,
+                                "was_created": was_created,
+                                "sync_method": "account_sync_service"
+                            }
+                        })
+                    else:
+                        logger.error(f"Failed to sync DSP advertiser {advertiser.get('advertiserId')}")
+                except Exception as e:
+                    logger.error(f"Error syncing DSP advertiser {advertiser.get('advertiserId')}: {str(e)}")
+                    # Continue with other advertisers even if one fails
+
+        return {
+            "status": "success",
+            "operation": "test_sync_endpoint",
+            "accounts": normalized_accounts,
+            "total_accounts": len(normalized_accounts),
+            "account_types_processed": {
+                "dsp": len([a for a in normalized_accounts if a["type"] == "dsp"]),
+                "advertising": len([a for a in normalized_accounts if a["type"] == "advertising"]),
+                "amc": len([a for a in normalized_accounts if a["type"] == "amc"])
+            },
+            "retrieved_at": datetime.now(timezone.utc).isoformat()
+        }
+
+    except Exception as e:
+        logger.error("Failed to test sync endpoint", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Test sync endpoint failed: {str(e)}"
         )
