@@ -455,6 +455,41 @@ class AccountService {
       return response;
     }
   }
+
+  // Sync only Sponsored Ads accounts
+  async syncSponsoredAdsAccounts(): Promise<any> {
+    try {
+      const response = await this.fetchWithAuth('/api/v1/accounts/all-account-types?include_advertising=true&include_dsp=false&include_amc=false');
+      return response;
+    } catch (error) {
+      console.warn('Unified endpoint failed, trying legacy amazon-ads-accounts endpoint:', error);
+      // Fall back to legacy endpoint
+      const response = await this.fetchWithAuth('/api/v1/accounts/amazon-ads-accounts');
+      return response;
+    }
+  }
+
+  // Sync only DSP accounts
+  async syncDSPAccounts(): Promise<any> {
+    try {
+      const response = await this.fetchWithAuth('/api/v1/accounts/all-account-types?include_advertising=false&include_dsp=true&include_amc=false');
+      return response;
+    } catch (error) {
+      console.error('Failed to sync DSP accounts:', error);
+      throw error;
+    }
+  }
+
+  // Sync only AMC instances
+  async syncAMCAccounts(): Promise<any> {
+    try {
+      const response = await this.fetchWithAuth('/api/v1/accounts/all-account-types?include_advertising=false&include_dsp=false&include_amc=true');
+      return response;
+    } catch (error) {
+      console.error('Failed to sync AMC accounts:', error);
+      throw error;
+    }
+  }
 }
 
 export const accountService = new AccountService();
