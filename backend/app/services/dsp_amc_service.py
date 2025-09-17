@@ -330,7 +330,8 @@ class DSPAMCService:
         exchange_ids: Optional[List[str]] = None,
         max_results: int = 200,
         next_token: Optional[str] = None,
-        profile_id: Optional[str] = None
+        profile_id: Optional[str] = None,
+        parent_entity_id: Optional[str] = None
     ) -> Dict:
         """
         List current seats for DSP advertisers by exchange
@@ -381,6 +382,10 @@ class DSPAMCService:
             "Content-Type": "application/json",
             "Accept": "application/json"
         }
+
+        # Add parent entity ID if provided (required for advertiser context)
+        if parent_entity_id:
+            headers["parentEntityId"] = parent_entity_id
 
         # Add optional profile scope
         if profile_id:
