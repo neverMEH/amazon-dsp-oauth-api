@@ -1713,11 +1713,12 @@ async def manual_token_refresh(
 @router.get("/dsp/{advertiser_id}/seats")
 async def get_dsp_advertiser_seats(
     advertiser_id: str = Path(..., description="DSP Advertiser ID"),
-    current_user: Dict = Depends(RequireAuth),
+    # Removed Clerk auth dependency since it was removed from project
     exchange_ids: Optional[List[str]] = Query(None, description="Filter by exchange IDs"),
     max_results: int = Query(200, ge=1, le=200, description="Maximum results"),
     next_token: Optional[str] = Query(None, description="Pagination token"),
-    profile_id: Optional[str] = Query(None, description="Optional profile ID filter")
+    profile_id: Optional[str] = Query(None, description="Optional profile ID filter"),
+    parent_entity_id: Optional[str] = Query(None, description="Parent entity ID for advertiser context")
 ) -> Dict[str, Any]:
     """
     Get seat information for a DSP advertiser
@@ -1740,13 +1741,8 @@ async def get_dsp_advertiser_seats(
     }
     """
     supabase = get_supabase_service_client()
-    user_id = current_user.get("user_id")
-
-    if not user_id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found in database"
-        )
+    # Since Clerk auth was removed, use the hardcoded user ID
+    user_id = "52a86382-266b-4004-bfd9-6bd6a64026eb"
 
     try:
         # Verify user owns this DSP advertiser
@@ -1787,7 +1783,8 @@ async def get_dsp_advertiser_seats(
             exchange_ids=exchange_ids,
             max_results=max_results,
             next_token=next_token,
-            profile_id=profile_id
+            profile_id=profile_id,
+            parent_entity_id=parent_entity_id
         )
 
         # Update database with seats information
@@ -1893,8 +1890,8 @@ async def get_dsp_advertiser_seats(
 @router.post("/dsp/{advertiser_id}/seats/refresh", response_model=DSPSeatsRefreshResponse)
 async def refresh_dsp_seats(
     advertiser_id: str = Path(..., description="DSP Advertiser ID"),
-    request: DSPSeatsRefreshRequest = Body(...),
-    current_user: Dict = Depends(RequireAuth)
+    request: DSPSeatsRefreshRequest = Body(...)
+    # Removed Clerk auth dependency since it was removed from project
 ) -> DSPSeatsRefreshResponse:
     """
     Force refresh of seat data for a DSP advertiser, bypassing cache
@@ -1905,13 +1902,8 @@ async def refresh_dsp_seats(
     - Useful after making changes in Amazon DSP console
     """
     supabase = get_supabase_service_client()
-    user_id = current_user.get("user_id")
-
-    if not user_id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found in database"
-        )
+    # Since Clerk auth was removed, use the hardcoded user ID
+    user_id = "52a86382-266b-4004-bfd9-6bd6a64026eb"
 
     try:
         # Verify user owns this DSP advertiser
@@ -2058,7 +2050,7 @@ async def refresh_dsp_seats(
 @router.get("/dsp/{advertiser_id}/seats/sync-history", response_model=DSPSyncHistoryResponse)
 async def get_dsp_seats_sync_history(
     advertiser_id: str = Path(..., description="DSP Advertiser ID"),
-    current_user: Dict = Depends(RequireAuth),
+    # Removed Clerk auth dependency since it was removed from project
     limit: int = Query(10, ge=1, le=100, description="Number of records"),
     offset: int = Query(0, ge=0, description="Pagination offset"),
     status_filter: Optional[str] = Query(None, regex="^(success|failed|partial)$", description="Filter by sync status")
@@ -2072,13 +2064,8 @@ async def get_dsp_seats_sync_history(
     - Audit data refresh operations
     """
     supabase = get_supabase_service_client()
-    user_id = current_user.get("user_id")
-
-    if not user_id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found in database"
-        )
+    # Since Clerk auth was removed, use the hardcoded user ID
+    user_id = "52a86382-266b-4004-bfd9-6bd6a64026eb"
 
     try:
         # Verify user owns this DSP advertiser
