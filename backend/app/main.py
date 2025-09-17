@@ -13,7 +13,7 @@ from pathlib import Path
 
 from app.config import settings
 from app.utils.logger import configure_logging
-from app.api.v1 import auth, health, users, webhooks, accounts, debug
+from app.api.v1 import auth, health, users, webhooks, accounts, debug, test_endpoints
 from app.api.v1 import settings as settings_router
 from app.middleware.error_handler import (
     oauth_exception_handler,
@@ -105,6 +105,7 @@ app.include_router(webhooks.router, prefix="/api/v1/webhooks", tags=["webhooks"]
 app.include_router(accounts.router, prefix="/api/v1", tags=["accounts"])
 app.include_router(settings_router.router, prefix="/api/v1", tags=["settings"])
 app.include_router(debug.router, prefix="/api/v1", tags=["debug"])
+app.include_router(test_endpoints.router, prefix="/api/v1", tags=["test"])
 
 # API endpoints
 @app.get("/api")
@@ -141,6 +142,17 @@ async def api_info():
                 "health": "/api/v1/accounts/health",
                 "reauthorize": "/api/v1/accounts/{account_id}/reauthorize",
                 "batch": "/api/v1/accounts/batch"
+            },
+            "test": {
+                "health": "/api/v1/test/health",
+                "tokens": "/api/v1/test/tokens/status",
+                "profiles": "/api/v1/test/amazon/profiles",
+                "accounts": "/api/v1/test/amazon/accounts",
+                "dsp_advertisers": "/api/v1/test/amazon/dsp-advertisers",
+                "dsp_seats": "/api/v1/test/amazon/dsp-seats/{advertiser_id}",
+                "database": "/api/v1/test/database/accounts",
+                "sync": "/api/v1/test/amazon/sync-test",
+                "note": "All test endpoints require X-Admin-Key header"
             }
         }
     }

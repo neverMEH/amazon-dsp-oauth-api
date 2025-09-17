@@ -281,7 +281,7 @@ class AccountSyncService:
         # Process DSP advertisers
         for advertiser in account_data.get("dsp_advertisers", []):
             try:
-                success, was_created = await self._upsert_dsp_account(user_id, advertiser)
+                success, was_created = await self._upsert_dsp_advertiser(user_id, advertiser)
                 if success:
                     if was_created:
                         created += 1
@@ -481,13 +481,13 @@ class AccountSyncService:
 
             return (bool(result.data), False)
 
-    async def _upsert_dsp_account(
+    async def _upsert_dsp_advertiser(
         self,
         user_id: str,
         advertiser_data: Dict
     ) -> Tuple[bool, bool]:
         """
-        Create or update a DSP advertiser account
+        Create or update a DSP advertiser
 
         Args:
             user_id: Database user ID
@@ -496,6 +496,11 @@ class AccountSyncService:
         Returns:
             Tuple of (success, was_created)
         """
+        # Initialize Supabase client if needed
+        if not self.supabase:
+            from app.db.base import get_supabase_service_client
+            self.supabase = get_supabase_service_client()
+
         amazon_account_id = advertiser_data.get("advertiserId")
 
         # Handle both old and new response formats
@@ -503,7 +508,7 @@ class AccountSyncService:
         # Old format: advertiserName, countryCode, timeZone
         advertiser_name = advertiser_data.get("name") or advertiser_data.get("advertiserName", "Unknown DSP")
         country = advertiser_data.get("country") or advertiser_data.get("countryCode")
-        timezone = advertiser_data.get("timezone") or advertiser_data.get("timeZone")
+        advertiser_timezone = advertiser_data.get("timezone") or advertiser_data.get("timeZone")
 
         # Map DSP status to database status
         status_map = {
@@ -529,17 +534,19 @@ class AccountSyncService:
             "account_type": "dsp",  # Set type to DSP
             "status": status_map.get(api_status, "active"),
             "last_synced_at": datetime.now(timezone.utc).isoformat(),
+            # Map API data to dedicated columns
+            "currency": advertiser_data.get("currency"),
+            "timezone": advertiser_timezone,
+            "brand_store_url": advertiser_data.get("url"),
+            "country_code": advertiser_data.get("countryCode") or country,
+            "profile_id": str(advertiser_data.get("profileId")) if advertiser_data.get("profileId") else None,
+            "is_regional": advertiser_data.get("isRegional", False),
             "metadata": {
-                # Store all fields from the API response
+                # Store additional fields and original response
                 "advertiser_type": advertiser_data.get("advertiserType"),
-                "country": country,
-                "country_code": country,  # Keep for backward compatibility
-                "currency": advertiser_data.get("currency"),
-                "timezone": timezone,
-                "url": advertiser_data.get("url"),
-                "profile_id": advertiser_data.get("profileId"),  # Added by our fetch method
                 "created_date": advertiser_data.get("createdDate"),
                 "api_status": api_status,
+                "alternateIds": advertiser_data.get("alternateIds", []),
                 # Store original response for debugging
                 "raw_response": advertiser_data
             }
