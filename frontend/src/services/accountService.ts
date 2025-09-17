@@ -416,78 +416,127 @@ class AccountService {
     return `${minutes}m`;
   }
 
-  // Sync accounts from Amazon Ads API (including DSP and AMC)
-  async syncAmazonAccounts(): Promise<any> {
+  // NOTE: Sync methods have been removed per spec requirements.
+  // Use addSponsoredAdsAccounts() and addDSPAdvertisers() instead.
+
+  // Add Sponsored Ads accounts using existing tokens or initiate OAuth
+  async addSponsoredAdsAccounts(): Promise<any> {
     try {
-      // Try the new unified endpoint that includes DSP and AMC
-      const response = await this.fetchWithAuth('/api/v1/accounts/all-account-types');
-      return response;
-    } catch (error) {
-      console.warn('Unified endpoint failed, trying legacy amazon-ads-accounts endpoint:', error);
-      // Fall back to legacy endpoint
-      const response = await this.fetchWithAuth('/api/v1/accounts/amazon-ads-accounts');
+      const response = await this.fetchWithAuth('/api/v1/accounts/sponsored-ads/add', {
+        method: 'POST',
+      });
 
-      // The Amazon API returns accounts in the response
-      if (response.accounts) {
-        // Map Amazon API response to our format
-        const mappedAccounts = response.accounts.map((acc: any) => ({
-          accountName: acc.accountName || acc.account_name || 'Unknown Account',
-          accountId: acc.adsAccountId || acc.accountId || acc.id,
-          accountType: 'advertising',
-          status: acc.status === 'CREATED' ? 'active' :
-                  acc.status === 'DISABLED' ? 'disconnected' :
-                  acc.status === 'PARTIALLY_CREATED' ? 'warning' :
-                  acc.status === 'PENDING' ? 'warning' : 'disconnected',
-          metadata: {
-            alternate_ids: acc.alternateIds || [],
-            country_codes: acc.countryCodes || [],
-            errors: acc.errors || {},
-            api_status: acc.status
-          }
-        }));
-
-        return {
-          ...response,
-          accounts: mappedAccounts
-        };
+      // Check if OAuth is required
+      if (response.requires_auth && response.auth_url) {
+        // Return the response so the UI can handle OAuth redirect
+        return response;
       }
 
       return response;
-    }
-  }
+    } catch (error: any) {
+      console.error('Failed to add Sponsored Ads accounts:', error);
 
-  // Sync only Sponsored Ads accounts
-  async syncSponsoredAdsAccounts(): Promise<any> {
-    try {
-      const response = await this.fetchWithAuth('/api/v1/accounts/all-account-types?include_advertising=true&include_dsp=false&include_amc=false');
-      return response;
-    } catch (error) {
-      console.warn('Unified endpoint failed, trying legacy amazon-ads-accounts endpoint:', error);
-      // Fall back to legacy endpoint
-      const response = await this.fetchWithAuth('/api/v1/accounts/amazon-ads-accounts');
-      return response;
-    }
-  }
+      // Enhanced error handling for specific OAuth scenarios
+      if (error.message?.includes('401')) {
+        throw new Error('Authentication required. Please sign in again.');
+      }
+      if (error.message?.includes('403')) {
+        throw new Error('Token expired. OAuth re-authorization required.');
+      }
+      if (error.message?.includes('500')) {
+        throw new Error('Failed to fetch accounts from Amazon. Please try again.');
+      }
 
-  // Sync only DSP accounts
-  async syncDSPAccounts(): Promise<any> {
-    try {
-      const response = await this.fetchWithAuth('/api/v1/accounts/all-account-types?include_advertising=false&include_dsp=true&include_amc=false');
-      return response;
-    } catch (error) {
-      console.error('Failed to sync DSP accounts:', error);
       throw error;
     }
   }
 
-  // Sync only AMC instances
-  async syncAMCAccounts(): Promise<any> {
+  // Add DSP advertisers using existing tokens or initiate OAuth
+  async addDSPAdvertisers(): Promise<any> {
     try {
-      const response = await this.fetchWithAuth('/api/v1/accounts/all-account-types?include_advertising=false&include_dsp=false&include_amc=true');
+      const response = await this.fetchWithAuth('/api/v1/accounts/dsp/add', {
+        method: 'POST',
+      });
+
+      // Check if OAuth is required
+      if (response.requires_auth && response.auth_url) {
+        // Return the response so the UI can handle OAuth redirect
+        // The reason field indicates why OAuth is needed (e.g., 'missing_dsp_scope')
+        return response;
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('Failed to add DSP advertisers:', error);
+
+      // Enhanced error handling for specific OAuth scenarios
+      if (error.message?.includes('401')) {
+        throw new Error('Authentication required. Please sign in again.');
+      }
+      if (error.message?.includes('403')) {
+        // Check if it's specifically a missing DSP scope issue
+        if (error.message?.includes('missing_dsp_scope') || error.message?.includes('scope')) {
+          throw new Error('DSP scope missing. Please re-authorize with DSP permissions.');
+        }
+        throw new Error('Token expired or insufficient permissions. OAuth re-authorization required.');
+      }
+      if (error.message?.includes('500')) {
+        throw new Error('Failed to fetch DSP advertisers from Amazon. Please try again.');
+      }
+
+      throw error;
+    }
+  }
+
+  // Delete an account from local database
+  async deleteAccount(accountId: string): Promise<any> {
+    try {
+      const response = await this.fetchWithAuth(`/api/v1/accounts/${accountId}`, {
+        method: 'DELETE',
+      });
       return response;
     } catch (error) {
-      console.error('Failed to sync AMC accounts:', error);
+      console.error('Failed to delete account:', error);
       throw error;
+    }
+  }
+
+  // Handle OAuth redirect by opening auth URL in new window
+  handleOAuthRedirect(authUrl: string, callback?: (result: any) => void): void {
+    // Open OAuth URL in popup window
+    const authWindow = window.open(
+      authUrl,
+      '_blank',
+      'width=500,height=600'
+    );
+
+    if (callback && authWindow) {
+      // Listen for OAuth callback message
+      const messageListener = (event: MessageEvent) => {
+        // Verify origin for security
+        if (event.origin !== window.location.origin) return;
+
+        if (event.data.type === 'oauth-success') {
+          callback({ success: true, code: event.data.code });
+          authWindow.close();
+          window.removeEventListener('message', messageListener);
+        } else if (event.data.type === 'oauth-error') {
+          callback({ success: false, error: event.data.error });
+          authWindow.close();
+          window.removeEventListener('message', messageListener);
+        }
+      };
+
+      window.addEventListener('message', messageListener);
+
+      // Check if window was closed manually
+      const checkClosed = setInterval(() => {
+        if (authWindow.closed) {
+          clearInterval(checkClosed);
+          window.removeEventListener('message', messageListener);
+          callback({ success: false, error: 'Window closed by user' });
+        }
+      }, 1000);
     }
   }
 }

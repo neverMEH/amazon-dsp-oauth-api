@@ -203,10 +203,10 @@ export const AccountTypeTabs: React.FC<AccountTypeTabsProps> = ({
 
   const handleDisconnect = async (accountId: string) => {
     try {
-      await accountService.disconnectAccount(accountId);
+      await accountService.deleteAccount(accountId);
       toast({
-        title: "Account disconnected",
-        description: "The account has been successfully disconnected.",
+        title: "Account deleted",
+        description: "The account has been successfully deleted.",
       });
       // Refetch the current tab's data
       if (activeTab === 'sponsored-ads') sponsoredAdsQuery.refetch();
@@ -214,8 +214,8 @@ export const AccountTypeTabs: React.FC<AccountTypeTabsProps> = ({
       else if (activeTab === 'amc') amcQuery.refetch();
     } catch (error) {
       toast({
-        title: "Failed to disconnect",
-        description: "Could not disconnect the account. Please try again.",
+        title: "Failed to delete",
+        description: "Could not delete the account. Please try again.",
         variant: "destructive",
       });
     }
@@ -250,23 +250,56 @@ export const AccountTypeTabs: React.FC<AccountTypeTabsProps> = ({
   const handleAddSponsoredAds = async () => {
     setIsAddingSponsoredAds(true);
     try {
-      const result = await accountService.syncSponsoredAdsAccounts();
+      const result = await accountService.addSponsoredAdsAccounts();
 
+      // Check if OAuth is required
+      if (result.requires_auth && result.auth_url) {
+        // Handle OAuth redirect
+        accountService.handleOAuthRedirect(result.auth_url, async (authResult) => {
+          if (authResult.success) {
+            // OAuth successful, retry adding accounts
+            try {
+              const retryResult = await accountService.addSponsoredAdsAccounts();
+              if (!retryResult.requires_auth) {
+                toast({
+                  title: "Success",
+                  description: `Successfully added ${retryResult.accounts_added || 0} Sponsored Ads accounts`,
+                });
+                // Refetch data to update the display
+                await sponsoredAdsQuery.refetch();
+              }
+            } catch (error) {
+              toast({
+                title: "Error",
+                description: "Failed to add accounts after authorization. Please try again.",
+                variant: "destructive",
+              });
+            }
+          } else {
+            toast({
+              title: "Authorization Cancelled",
+              description: "OAuth authorization was cancelled or failed.",
+              variant: "destructive",
+            });
+          }
+          setIsAddingSponsoredAds(false);
+        });
+      } else {
+        // Accounts added successfully without OAuth
+        toast({
+          title: "Success",
+          description: `Successfully added ${result.accounts_added || 0} Sponsored Ads accounts`,
+        });
+        // Refetch data to update the display
+        await sponsoredAdsQuery.refetch();
+        setIsAddingSponsoredAds(false);
+      }
+    } catch (error: any) {
       toast({
-        title: "Sponsored Ads accounts added",
-        description: `Successfully added ${result.accounts?.length || 0} Sponsored Ads accounts.`,
-      });
-
-      // Refetch the data to show new accounts
-      sponsoredAdsQuery.refetch();
-    } catch (error) {
-      console.error('Failed to add Sponsored Ads accounts:', error);
-      toast({
-        title: "Failed to add accounts",
-        description: "Could not add Sponsored Ads accounts. Please check your Amazon connection.",
+        title: "Error",
+        description: error.message || "Failed to add Sponsored Ads accounts. Please try again.",
         variant: "destructive",
       });
-    } finally {
       setIsAddingSponsoredAds(false);
     }
   };
@@ -274,23 +307,56 @@ export const AccountTypeTabs: React.FC<AccountTypeTabsProps> = ({
   const handleAddDSP = async () => {
     setIsAddingDSP(true);
     try {
-      const result = await accountService.syncDSPAccounts();
+      const result = await accountService.addDSPAdvertisers();
 
+      // Check if OAuth is required
+      if (result.requires_auth && result.auth_url) {
+        // Handle OAuth redirect
+        accountService.handleOAuthRedirect(result.auth_url, async (authResult) => {
+          if (authResult.success) {
+            // OAuth successful, retry adding advertisers
+            try {
+              const retryResult = await accountService.addDSPAdvertisers();
+              if (!retryResult.requires_auth) {
+                toast({
+                  title: "Success",
+                  description: `Successfully added ${retryResult.advertisers_added || 0} DSP advertisers`,
+                });
+                // Refetch data to update the display
+                await dspQuery.refetch();
+              }
+            } catch (error) {
+              toast({
+                title: "Error",
+                description: "Failed to add DSP advertisers after authorization. Please try again.",
+                variant: "destructive",
+              });
+            }
+          } else {
+            toast({
+              title: "Authorization Cancelled",
+              description: "OAuth authorization was cancelled or failed.",
+              variant: "destructive",
+            });
+          }
+          setIsAddingDSP(false);
+        });
+      } else {
+        // Advertisers added successfully without OAuth
+        toast({
+          title: "Success",
+          description: `Successfully added ${result.advertisers_added || 0} DSP advertisers`,
+        });
+        // Refetch data to update the display
+        await dspQuery.refetch();
+        setIsAddingDSP(false);
+      }
+    } catch (error: any) {
       toast({
-        title: "DSP advertisers added",
-        description: `Successfully added ${result.accounts?.length || 0} DSP advertisers.`,
-      });
-
-      // Refetch the data to show new accounts
-      dspQuery.refetch();
-    } catch (error) {
-      console.error('Failed to add DSP advertisers:', error);
-      toast({
-        title: "Failed to add advertisers",
-        description: "Could not add DSP advertisers. Please check your Amazon connection and permissions.",
+        title: "Error",
+        description: error.message || "Failed to add DSP advertisers. Please try again.",
         variant: "destructive",
       });
-    } finally {
       setIsAddingDSP(false);
     }
   };
@@ -298,20 +364,15 @@ export const AccountTypeTabs: React.FC<AccountTypeTabsProps> = ({
   const handleAddAMC = async () => {
     setIsAddingAMC(true);
     try {
-      const result = await accountService.syncAMCAccounts();
-
+      // Note: AMC add functionality not yet implemented per spec
       toast({
-        title: "AMC instances added",
-        description: `Successfully added ${result.accounts?.length || 0} AMC instances.`,
+        title: "Coming Soon",
+        description: "AMC instance connection will be available in a future update.",
       });
-
-      // Refetch the data to show new accounts
-      amcQuery.refetch();
     } catch (error) {
-      console.error('Failed to add AMC instances:', error);
       toast({
-        title: "Failed to add instances",
-        description: "Could not add AMC instances. Please check your Amazon connection and permissions.",
+        title: "Error",
+        description: "Failed to add AMC instances.",
         variant: "destructive",
       });
     } finally {

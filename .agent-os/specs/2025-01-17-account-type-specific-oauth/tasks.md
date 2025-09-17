@@ -35,21 +35,21 @@ This implementation replaces the "Sync from Amazon" functionality with account-t
   - [x] 3.6 Update database storage to properly set account_type field ('advertising' for Sponsored Ads, 'dsp' for DSP)
   - [x] 3.7 Verify all service tests pass
 
-- [ ] 4. Update Frontend API Client and Service Layer
-  - [ ] 4.1 Write tests for addSponsoredAdsAccounts service method
-  - [ ] 4.2 Write tests for addDSPAdvertisers service method
-  - [ ] 4.3 Update accountService.ts to call new add endpoints per @api-spec Backend API Endpoints
-  - [ ] 4.4 Handle OAuth redirect responses in frontend (requires_auth flag handling)
-  - [ ] 4.5 Remove all sync-related service methods per @spec Out of Scope
-  - [ ] 4.6 Update error handling for OAuth flow initiation per @technical-spec OAuth Flow UI
-  - [ ] 4.7 Verify all frontend service tests pass
+- [x] 4. Update Frontend API Client and Service Layer
+  - [x] 4.1 Write tests for addSponsoredAdsAccounts service method
+  - [x] 4.2 Write tests for addDSPAdvertisers service method
+  - [x] 4.3 Update accountService.ts to call new add endpoints per @api-spec Backend API Endpoints
+  - [x] 4.4 Handle OAuth redirect responses in frontend (requires_auth flag handling)
+  - [x] 4.5 Remove all sync-related service methods per @spec Out of Scope
+  - [x] 4.6 Update error handling for OAuth flow initiation per @technical-spec OAuth Flow UI
+  - [x] 4.7 Verify all frontend service tests pass
 
-- [ ] 5. Connect UI Components to New Backend Endpoints
-  - [ ] 5.1 Write component tests for new Add button behaviors (already implemented per @technical-spec UI Components)
-  - [ ] 5.2 Update handleAddSponsoredAds to use new add endpoint instead of sync per @spec User Stories
-  - [ ] 5.3 Update handleAddDSP to use new add endpoint instead of sync per @spec User Stories
-  - [ ] 5.4 Implement OAuth redirect handling in button click handlers per @technical-spec OAuth Flow UI
-  - [ ] 5.5 Remove all references to sync functionality from AccountManagementPage per @spec Spec Scope item 5
-  - [ ] 5.6 Test end-to-end flow for both account types per @spec Expected Deliverable
-  - [ ] 5.7 Verify loading states and error handling work correctly per @technical-spec UI Components
-  - [ ] 5.8 Ensure all component tests pass
+- [x] 5. Connect UI Components to New Backend Endpoints
+  - [x] 5.1 Write component tests for new Add button behaviors (already implemented per @technical-spec UI Components)
+  - [x] 5.2 Update handleAddSponsoredAds to use new add endpoint instead of sync per @spec User Stories
+  - [x] 5.3 Update handleAddDSP to use new add endpoint instead of sync per @spec User Stories
+  - [x] 5.4 Implement OAuth redirect handling in button click handlers per @technical-spec OAuth Flow UI
+  - [x] 5.5 Remove all references to sync functionality from AccountManagementPage per @spec Spec Scope item 5
+  - [x] 5.6 Test end-to-end flow for both account types per @spec Expected Deliverable
+  - [x] 5.7 Verify loading states and error handling work correctly per @technical-spec UI Components
+  - [x] 5.8 Ensure all component tests pass
