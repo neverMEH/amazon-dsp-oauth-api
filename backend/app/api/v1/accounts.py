@@ -10,11 +10,12 @@ from pydantic import BaseModel, Field
 from uuid import uuid4
 
 from app.middleware.clerk_auth import RequireAuth, get_user_context
-from app.services.account_service import account_service
+from app.services.account_service import account_service as amazon_account_service
 from app.services.amazon_oauth_service import amazon_oauth_service
 from app.services.token_service import token_service
 from app.services.dsp_amc_service import dsp_amc_service
 from app.services.account_sync_service import account_sync_service
+from app.services.account_addition_service import account_service
 from app.db.base import get_supabase_client, get_supabase_service_client
 from app.core.exceptions import TokenRefreshError, RateLimitError, DSPSeatsError, MissingDSPAccessError
 from app.models.amazon_account import AmazonAccount
@@ -798,7 +799,7 @@ async def list_amazon_ads_accounts(
         token_data = await refresh_token_if_needed(user_id, token_data, supabase)
         
         # Call Amazon Account Management API with pagination
-        response = await account_service.list_ads_accounts(
+        response = await amazon_account_service.list_ads_accounts(
             token_data["access_token"],
             next_token=next_token
         )
@@ -955,7 +956,7 @@ async def list_amazon_profiles(
         token_data = await refresh_token_if_needed(user_id, token_data, supabase)
         
         # Call Amazon API to list profiles
-        profiles = await account_service.list_profiles(token_data["access_token"])
+        profiles = await amazon_account_service.list_profiles(token_data["access_token"])
         
         # Transform Amazon API response to our schema
         response_profiles = []
@@ -1175,7 +1176,7 @@ async def get_account_details(
                 token_data = await get_user_token(user_id, supabase)
                 if token_data:
                     token_data = await refresh_token_if_needed(user_id, token_data, supabase)
-                    profile = await account_service.get_profile(
+                    profile = await amazon_account_service.get_profile(
                         token_data["access_token"],
                         str(account.metadata["profile_id"])
                     )
@@ -1532,7 +1533,7 @@ async def batch_operations(
                         # Get profile data
                         profile_id = result.data[0].get("metadata", {}).get("profile_id")
                         if profile_id:
-                            profile = await account_service.get_profile(
+                            profile = await amazon_account_service.get_profile(
                                 token_data["access_token"],
                                 str(profile_id)
                             )
@@ -2282,4 +2283,225 @@ async def sync_all_accounts_direct() -> Dict[str, Any]:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to sync accounts: {str(e)}"
+        )
+
+
+# ============================================================================
+# NEW ACCOUNT-TYPE-SPECIFIC ADD ENDPOINTS
+# ============================================================================
+
+class AddSponsoredAdsResponse(BaseModel):
+    """Response for adding Sponsored Ads accounts"""
+    requires_auth: bool = Field(..., description="Whether OAuth is required")
+    auth_url: Optional[str] = Field(None, description="OAuth URL if auth required")
+    state: Optional[str] = Field(None, description="OAuth state token")
+    accounts_added: Optional[int] = Field(None, description="Number of accounts added")
+    accounts: Optional[List[Dict[str, Any]]] = Field(None, description="Added accounts")
+
+
+class AddDSPResponse(BaseModel):
+    """Response for adding DSP advertisers"""
+    requires_auth: bool = Field(..., description="Whether OAuth is required")
+    auth_url: Optional[str] = Field(None, description="OAuth URL if auth required")
+    state: Optional[str] = Field(None, description="OAuth state token")
+    reason: Optional[str] = Field(None, description="Reason for auth requirement")
+    advertisers_added: Optional[int] = Field(None, description="Number of advertisers added")
+    advertisers: Optional[List[Dict[str, Any]]] = Field(None, description="Added advertisers")
+
+
+@router.post("/sponsored-ads/add", response_model=AddSponsoredAdsResponse)
+async def add_sponsored_ads_accounts(
+    current_user: Dict[str, Any] = Depends(RequireAuth)
+):
+    """
+    Add Sponsored Ads accounts using existing OAuth tokens or initiate OAuth if needed
+
+    Flow:
+    1. Check if user has valid OAuth tokens
+    2. If no tokens, return OAuth URL for authentication
+    3. If tokens exist, fetch accounts from Amazon API and store them
+    """
+    try:
+        user_id = current_user.get("user_id") or current_user.get("id")
+
+        # Check for existing tokens
+        token_info = await token_service.get_active_token()
+
+        if not token_info:
+            # No tokens - initiate OAuth
+            auth_url, state = amazon_oauth_service.generate_oauth_url()
+            await token_service.store_state_token(state, auth_url)
+
+            return AddSponsoredAdsResponse(
+                requires_auth=True,
+                auth_url=auth_url,
+                state=state
+            )
+
+        # Check if token is expired
+        expires_at = datetime.fromisoformat(
+            token_info["expires_at"].replace("Z", "+00:00")
+        )
+        if expires_at <= datetime.now(timezone.utc):
+            # Token expired - need re-auth
+            auth_url, state = amazon_oauth_service.generate_oauth_url()
+            await token_service.store_state_token(state, auth_url)
+
+            return AddSponsoredAdsResponse(
+                requires_auth=True,
+                auth_url=auth_url,
+                state=state
+            )
+
+        # We have valid tokens - fetch and store accounts
+        result = await account_service.fetch_and_store_sponsored_ads(
+            user_id=user_id,
+            access_token=token_info["access_token"]
+        )
+
+        return AddSponsoredAdsResponse(
+            requires_auth=False,
+            accounts_added=result.get("accounts_added", 0),
+            accounts=result.get("accounts", [])
+        )
+
+    except Exception as e:
+        logger.error(
+            "Failed to add Sponsored Ads accounts",
+            user_id=user_id,
+            error=str(e)
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to add accounts: {str(e)}"
+        )
+
+
+@router.post("/dsp/add", response_model=AddDSPResponse)
+async def add_dsp_advertisers(
+    current_user: Dict[str, Any] = Depends(RequireAuth)
+):
+    """
+    Add DSP advertisers using existing OAuth tokens or initiate OAuth if needed
+
+    Flow:
+    1. Check if user has valid OAuth tokens with DSP scope
+    2. If no tokens or missing DSP scope, return OAuth URL
+    3. If valid tokens exist, fetch advertisers from Amazon API and store them
+    """
+    try:
+        user_id = current_user.get("user_id") or current_user.get("id")
+
+        # Check for existing tokens
+        token_info = await token_service.get_active_token()
+
+        if not token_info:
+            # No tokens - initiate OAuth
+            auth_url, state = amazon_oauth_service.generate_oauth_url()
+            await token_service.store_state_token(state, auth_url)
+
+            return AddDSPResponse(
+                requires_auth=True,
+                auth_url=auth_url,
+                state=state,
+                reason="no_tokens"
+            )
+
+        # Check if token has DSP scope
+        token_scope = token_info.get("scope", "")
+        if "advertising::dsp_campaigns" not in token_scope:
+            # Missing DSP scope - need re-auth
+            auth_url, state = amazon_oauth_service.generate_oauth_url()
+            await token_service.store_state_token(state, auth_url)
+
+            return AddDSPResponse(
+                requires_auth=True,
+                auth_url=auth_url,
+                state=state,
+                reason="missing_dsp_scope"
+            )
+
+        # Check if token is expired
+        expires_at = datetime.fromisoformat(
+            token_info["expires_at"].replace("Z", "+00:00")
+        )
+        if expires_at <= datetime.now(timezone.utc):
+            # Token expired - need re-auth
+            auth_url, state = amazon_oauth_service.generate_oauth_url()
+            await token_service.store_state_token(state, auth_url)
+
+            return AddDSPResponse(
+                requires_auth=True,
+                auth_url=auth_url,
+                state=state,
+                reason="token_expired"
+            )
+
+        # We have valid tokens with DSP scope - fetch and store advertisers
+        result = await account_service.fetch_and_store_dsp_advertisers(
+            user_id=user_id,
+            access_token=token_info["access_token"]
+        )
+
+        return AddDSPResponse(
+            requires_auth=False,
+            advertisers_added=result.get("advertisers_added", 0),
+            advertisers=result.get("advertisers", [])
+        )
+
+    except Exception as e:
+        logger.error(
+            "Failed to add DSP advertisers",
+            user_id=user_id,
+            error=str(e)
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to add advertisers: {str(e)}"
+        )
+
+
+@router.delete("/{account_id}")
+async def delete_account(
+    account_id: str = Path(..., description="Account ID to delete"),
+    current_user: Dict[str, Any] = Depends(RequireAuth)
+):
+    """
+    Permanently delete an account from the local database
+
+    This only removes the account from the local database.
+    It does not affect the Amazon account or OAuth tokens.
+    """
+    try:
+        user_id = current_user.get("user_id") or current_user.get("id")
+
+        # Delete the account
+        result = await account_service.delete_account(
+            user_id=user_id,
+            account_id=account_id
+        )
+
+        if not result:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Account not found"
+            )
+
+        return {
+            "success": True,
+            "message": "Account successfully deleted"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            "Failed to delete account",
+            user_id=user_id,
+            account_id=account_id,
+            error=str(e)
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete account: {str(e)}"
         )
