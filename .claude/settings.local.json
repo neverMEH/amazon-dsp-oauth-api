@@ -79,7 +79,8 @@
       "Bash(railway logs:*)",
       "Bash(env)",
       "mcp__railway__variable_set",
-      "mcp__railway__service_restart"
+      "mcp__railway__service_restart",
+      "Bash(git show-branch:*)"
     ],
     "deny": [],
     "ask": []
