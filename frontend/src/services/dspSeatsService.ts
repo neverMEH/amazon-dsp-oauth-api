@@ -21,6 +21,7 @@ export interface DSPSeatsQueryParams {
   maxResults?: number;
   nextToken?: string;
   exchangeIds?: string[];
+  signal?: AbortSignal; // Support for request cancellation
 }
 
 export interface RefreshSeatsParams {
@@ -73,7 +74,7 @@ class DSPSeatsService {
     }
   }
 
-  // Helper for authenticated requests
+  // Helper for authenticated requests with AbortController support
   private async fetchWithAuth(url: string, options: RequestInit = {}): Promise<any> {
     const token = await this.getAuthToken();
     if (!token) {
@@ -88,6 +89,8 @@ class DSPSeatsService {
         'Content-Type': 'application/json',
         ...options.headers,
       },
+      // Support AbortController for request cancellation
+      signal: options.signal,
     });
 
     if (!response.ok) {
@@ -100,6 +103,7 @@ class DSPSeatsService {
 
   /**
    * Fetch advertiser seats for a given advertiser ID
+   * Note: Service-level cache disabled to prevent conflicts with React Query
    */
   async fetchAdvertiserSeats(
     advertiserId: string,
@@ -126,7 +130,16 @@ class DSPSeatsService {
         queryParams.toString() ? `?${queryParams.toString()}` : ''
       }`;
 
-      return await this.fetchWithAuth(url);
+      const result = await this.fetchWithAuth(url, {
+        signal: params?.signal, // Pass AbortController signal
+      });
+
+      // Mark data as fresh from API (not cached) for React Query
+      return {
+        ...result,
+        cached: false,
+        timestamp: new Date().toISOString()
+      };
     } catch (error) {
       console.error('Error fetching advertiser seats:', error);
       throw error;
@@ -181,37 +194,27 @@ class DSPSeatsService {
 // Create and export a singleton instance
 export const dspSeatsService = new DSPSeatsService();
 
-// Cache management utilities
+// Note: Service-level caching disabled to prevent conflicts with React Query
+// React Query handles all caching and invalidation automatically
+// The below cache utilities are kept for backwards compatibility but not actively used
+
+// Legacy cache management utilities (deprecated - use React Query instead)
 const seatsCache = new Map<string, { data: DSPSeatsResponse; timestamp: number }>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 /**
- * Get cached seats data if available and not expired
+ * @deprecated Use React Query caching instead
  */
 export function getCachedSeats(advertiserId: string): DSPSeatsResponse | null {
-  const cached = seatsCache.get(advertiserId);
-
-  if (!cached) {
-    return null;
-  }
-
-  const now = Date.now();
-  if (now - cached.timestamp > CACHE_TTL) {
-    seatsCache.delete(advertiserId);
-    return null;
-  }
-
-  return cached.data;
+  // Always return null to force React Query to handle caching
+  return null;
 }
 
 /**
- * Cache seats data
+ * @deprecated Use React Query caching instead
  */
 export function cacheSeats(advertiserId: string, data: DSPSeatsResponse): void {
-  seatsCache.set(advertiserId, {
-    data,
-    timestamp: Date.now(),
-  });
+  // No-op - React Query handles caching
 }
 
 /**

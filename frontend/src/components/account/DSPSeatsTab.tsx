@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import {
@@ -58,23 +58,49 @@ export const DSPSeatsTab: React.FC<DSPSeatsTabProps> = ({ advertiserId }) => {
   const [selectedExchanges, setSelectedExchanges] = useState<string[]>([]);
   const [nextToken, setNextToken] = useState<string | null>(null);
 
+  // Reset state when advertiserId changes
+  useEffect(() => {
+    setCurrentPage(1);
+    setSelectedExchanges([]);
+    setNextToken(null);
+  }, [advertiserId]);
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch advertiser seats
+  // Stabilize query dependencies with useMemo
+  const stableQueryParams = useMemo(() => ({
+    maxResults: pageSize,
+    nextToken: nextToken || undefined,
+    exchangeIds: selectedExchanges.length > 0 ? selectedExchanges : undefined,
+  }), [pageSize, nextToken, selectedExchanges]);
+
+  const stableQueryKey = useMemo(() => [
+    'dsp-seats',
+    advertiserId,
+    pageSize,
+    nextToken,
+    selectedExchanges.length > 0 ? selectedExchanges.join(',') : ''
+  ], [advertiserId, pageSize, nextToken, selectedExchanges]);
+
+  // Fetch advertiser seats with AbortController support
   const {
     data: seatsData,
     isLoading,
     error,
     refetch
   } = useQuery({
-    queryKey: ['dsp-seats', advertiserId, pageSize, nextToken, selectedExchanges],
-    queryFn: () => dspSeatsService.fetchAdvertiserSeats(advertiserId, {
-      maxResults: pageSize,
-      nextToken: nextToken || undefined,
-      exchangeIds: selectedExchanges.length > 0 ? selectedExchanges : undefined,
-    }),
+    queryKey: stableQueryKey,
+    queryFn: async ({ signal }) => {
+      return dspSeatsService.fetchAdvertiserSeats(advertiserId, {
+        ...stableQueryParams,
+        signal, // Pass AbortController signal for request cancellation
+      });
+    },
     staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled: !!advertiserId,
+    // Cancel queries when component unmounts or key changes
+    refetchOnWindowFocus: false,
   });
 
   // Refresh mutation
@@ -142,32 +168,32 @@ export const DSPSeatsTab: React.FC<DSPSeatsTabProps> = ({ advertiserId }) => {
     }));
   }, [seatsData, advertiserId]);
 
-  const handlePageSizeChange = (value: string) => {
+  const handlePageSizeChange = useCallback((value: string) => {
     setPageSize(parseInt(value, 10));
     setCurrentPage(1);
     setNextToken(null);
-  };
+  }, []);
 
-  const handleNextPage = () => {
+  const handleNextPage = useCallback(() => {
     if (seatsData?.nextToken) {
       setNextToken(seatsData.nextToken);
-      setCurrentPage(currentPage + 1);
+      setCurrentPage(prev => prev + 1);
     }
-  };
+  }, [seatsData?.nextToken]);
 
-  const handlePrevPage = () => {
+  const handlePrevPage = useCallback(() => {
     // Note: Real implementation would need to track previous tokens
-    setCurrentPage(Math.max(1, currentPage - 1));
+    setCurrentPage(prev => Math.max(1, prev - 1));
     setNextToken(null);
-  };
+  }, []);
 
-  const handleClearFilter = () => {
+  const handleClearFilter = useCallback(() => {
     setSelectedExchanges([]);
     setCurrentPage(1);
     setNextToken(null);
-  };
+  }, []);
 
-  const toggleExchange = (exchangeId: string) => {
+  const toggleExchange = useCallback((exchangeId: string) => {
     setSelectedExchanges(prev =>
       prev.includes(exchangeId)
         ? prev.filter(id => id !== exchangeId)
@@ -175,7 +201,7 @@ export const DSPSeatsTab: React.FC<DSPSeatsTabProps> = ({ advertiserId }) => {
     );
     setCurrentPage(1);
     setNextToken(null);
-  };
+  }, []);
 
   if (isLoading) {
     return (

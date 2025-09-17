@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -32,6 +32,7 @@ export const AccountTypeTabs: React.FC<AccountTypeTabsProps> = ({
     return ['sponsored-ads', 'dsp', 'amc'].includes(typeParam) ? typeParam : 'sponsored-ads';
   });
   const [selectedDSPAccount, setSelectedDSPAccount] = useState<any>(null);
+  const urlUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Query for Sponsored Ads accounts
   const sponsoredAdsQuery = useQuery({
@@ -70,18 +71,40 @@ export const AccountTypeTabs: React.FC<AccountTypeTabsProps> = ({
     },
   });
 
-  // Update URL when tab changes
-  useEffect(() => {
-    setSearchParams({ type: activeTab });
-  }, [activeTab, setSearchParams]);
+  // Debounced URL update to prevent loops
+  const updateUrl = useCallback((tabType: AccountType) => {
+    if (urlUpdateTimeoutRef.current) {
+      clearTimeout(urlUpdateTimeoutRef.current);
+    }
+    urlUpdateTimeoutRef.current = setTimeout(() => {
+      setSearchParams({ type: tabType }, { replace: true });
+    }, 100);
+  }, [setSearchParams]);
 
-  // Update active tab when URL changes
+  // Update URL when tab changes (debounced)
+  useEffect(() => {
+    const currentType = searchParams.get('type') as AccountType;
+    if (currentType !== activeTab) {
+      updateUrl(activeTab);
+    }
+  }, [activeTab, updateUrl, searchParams]);
+
+  // Update active tab when URL changes (only if different)
   useEffect(() => {
     const typeParam = searchParams.get('type') as AccountType;
     if (['sponsored-ads', 'dsp', 'amc'].includes(typeParam) && typeParam !== activeTab) {
       setActiveTab(typeParam);
     }
-  }, [searchParams, activeTab]);
+  }, [searchParams]); // Removed activeTab dependency to prevent loop
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (urlUpdateTimeoutRef.current) {
+        clearTimeout(urlUpdateTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Get account counts for badges
   const sponsoredAdsCount = (sponsoredAdsQuery.data as any)?.totalCount || (sponsoredAdsQuery.data as any)?.accounts?.length || 0;
