@@ -131,7 +131,7 @@ class APIQuotaExceededError(OAuthException):
 
 class AmazonAuthError(OAuthException):
     """Raised when Amazon authentication fails"""
-    
+
     def __init__(self, error_message: str):
         super().__init__(
             message=f"Amazon authentication failed: {error_message}",
@@ -139,3 +139,44 @@ class AmazonAuthError(OAuthException):
             status_code=401,
             details={"error": error_message}
         )
+
+
+class DSPSeatsError(Exception):
+    """Base exception for DSP Seats API errors"""
+    pass
+
+
+class InvalidAdvertiserError(DSPSeatsError):
+    """Raised when advertiser ID is invalid or not found"""
+
+    def __init__(self, advertiser_id: str):
+        self.advertiser_id = advertiser_id
+        super().__init__(f"Invalid or not found advertiser ID: {advertiser_id}")
+
+
+class MissingDSPAccessError(DSPSeatsError):
+    """Raised when user lacks DSP access"""
+
+    def __init__(self, advertiser_id: Optional[str] = None):
+        self.advertiser_id = advertiser_id
+        message = "User lacks DSP Seats API access"
+        if advertiser_id:
+            message = f"{message} for advertiser {advertiser_id}"
+        super().__init__(message)
+
+
+class DSPSyncInProgressError(DSPSeatsError):
+    """Raised when a sync is already in progress for the advertiser"""
+
+    def __init__(self, advertiser_id: str):
+        self.advertiser_id = advertiser_id
+        super().__init__(f"Sync already in progress for advertiser {advertiser_id}")
+
+
+class DSPSeatsQuotaError(DSPSeatsError):
+    """Raised when DSP seats quota is exceeded"""
+
+    def __init__(self, advertiser_id: str, quota_type: str = "requests"):
+        self.advertiser_id = advertiser_id
+        self.quota_type = quota_type
+        super().__init__(f"DSP seats {quota_type} quota exceeded for advertiser {advertiser_id}")

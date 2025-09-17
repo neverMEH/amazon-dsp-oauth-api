@@ -65,7 +65,16 @@
       "mcp__railway__deployment_logs",
       "mcp__railway__service_info",
       "mcp__railway__list_service_variables",
-      "mcp__railway__deployment_status"
+      "mcp__railway__deployment_status",
+      "Bash(npm test:*)",
+      "mcp__supabase__search_docs",
+      "Bash(timeout 30s npm test -- --run DSPSeatsTab.test.tsx)",
+      "Bash(pytest tests/ -v)",
+      "Bash(pytest:*)",
+      "Bash(gh pr list:*)",
+      "Bash(paplay:*)",
+      "Bash(aplay:*)",
+      "Bash(afplay:*)"
     ],
     "deny": [],
     "ask": []

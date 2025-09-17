@@ -282,6 +282,147 @@ class DSPAMCService:
             logger.error("DSP advertiser details request error", error=str(e))
             raise Exception(f"Network error: {str(e)}")
 
+    async def list_advertiser_seats(
+        self,
+        access_token: str,
+        advertiser_id: str,
+        exchange_ids: Optional[List[str]] = None,
+        max_results: int = 200,
+        next_token: Optional[str] = None,
+        profile_id: Optional[str] = None
+    ) -> Dict:
+        """
+        List current seats for DSP advertisers by exchange
+
+        **Endpoint Details:**
+        - URL: POST /dsp/v1/seats/advertisers/current/list
+        - Method: POST
+        - Required Headers: Authorization, Amazon-Advertising-API-ClientId, Amazon-Ads-AccountId
+        - Optional: Amazon-Advertising-API-Scope (for profile filtering)
+
+        **Response Structure:**
+        {
+            "advertiserSeats": [
+                {
+                    "advertiserId": "string",
+                    "currentSeats": [
+                        {
+                            "exchangeId": "string",
+                            "exchangeName": "string",
+                            "dealCreationId": "string",  # Optional
+                            "spendTrackingId": "string"  # Optional
+                        }
+                    ]
+                }
+            ],
+            "nextToken": "string"  # For pagination
+        }
+
+        Args:
+            access_token: Valid access token with dsp_campaigns scope
+            advertiser_id: DSP Advertiser ID (required for Amazon-Ads-AccountId header)
+            exchange_ids: Optional list of exchange IDs to filter
+            max_results: Maximum results (1-200)
+            next_token: Pagination token
+            profile_id: Optional profile ID for additional filtering
+
+        Returns:
+            Dictionary containing advertiser seats information
+
+        Raises:
+            TokenRefreshError: If token is invalid
+            RateLimitError: If rate limit exceeded
+        """
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Amazon-Advertising-API-ClientId": settings.amazon_client_id,
+            "Amazon-Ads-AccountId": advertiser_id,  # REQUIRED
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        }
+
+        # Add optional profile scope
+        if profile_id:
+            headers["Amazon-Advertising-API-Scope"] = profile_id
+
+        # Build request payload
+        payload = {
+            "maxResults": min(max_results, 200)  # Ensure within bounds
+        }
+
+        if exchange_ids:
+            payload["exchangeIdFilter"] = exchange_ids
+
+        if next_token:
+            payload["nextToken"] = next_token
+
+        url = f"{self.base_url}/dsp/v1/seats/advertisers/current/list"
+
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    url,
+                    headers=headers,
+                    json=payload,
+                    timeout=30.0
+                )
+
+                if response.status_code == 401:
+                    logger.error("Unauthorized - token may be expired")
+                    raise TokenRefreshError("Access token expired or invalid")
+
+                if response.status_code == 403:
+                    logger.warning(
+                        "User lacks DSP Seats API permissions",
+                        advertiser_id=advertiser_id
+                    )
+                    # Return empty result indicating permission issue
+                    return {
+                        "advertiserSeats": [],
+                        "error": "Insufficient permissions for DSP Seats API"
+                    }
+
+                if response.status_code == 429:
+                    retry_after = response.headers.get("Retry-After", "60")
+                    logger.warning("Rate limit exceeded", retry_after=retry_after)
+                    raise RateLimitError(int(retry_after))
+
+                if response.status_code == 400:
+                    error_data = response.json() if response.text else {}
+                    logger.error(
+                        "Bad request - check advertiser ID and parameters",
+                        advertiser_id=advertiser_id,
+                        error=error_data
+                    )
+                    raise ValueError(f"Invalid request: {error_data}")
+
+                if response.status_code != 200:
+                    error_data = response.json() if response.text else {}
+                    logger.error(
+                        "Failed to list advertiser seats",
+                        status_code=response.status_code,
+                        error=error_data
+                    )
+                    raise Exception(f"API Error: {response.status_code}")
+
+                data = response.json()
+
+                logger.info(
+                    "Successfully retrieved advertiser seats",
+                    advertiser_id=advertiser_id,
+                    seat_count=len(data.get("advertiserSeats", [])),
+                    has_more=bool(data.get("nextToken"))
+                )
+
+                return data
+
+        except httpx.TimeoutException:
+            logger.error("Advertiser seats request timeout")
+            raise Exception("Request timeout")
+        except httpx.RequestError as e:
+            logger.error("Advertiser seats request error", error=str(e))
+            raise Exception(f"Network error: {str(e)}")
+
     async def list_all_account_types(
         self,
         access_token: str,
