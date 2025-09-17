@@ -2407,19 +2407,8 @@ async def add_dsp_advertisers(
                 reason="no_tokens"
             )
 
-        # Check if token has DSP scope
-        token_scope = token_info.get("scope", "")
-        if "advertising::dsp_campaigns" not in token_scope:
-            # Missing DSP scope - need re-auth
-            auth_url, state = amazon_oauth_service.generate_oauth_url()
-            await token_service.store_state_token(state, auth_url)
-
-            return AddDSPResponse(
-                requires_auth=True,
-                auth_url=auth_url,
-                state=state,
-                reason="missing_dsp_scope"
-            )
+        # DSP access is determined by account permissions, not a specific scope
+        # The standard campaign_management scope covers DSP if the account has access
 
         # Check if token is expired
         expires_at = datetime.fromisoformat(

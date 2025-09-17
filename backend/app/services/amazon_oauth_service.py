@@ -32,11 +32,11 @@ class AmazonOAuthService:
         self.api_base_url = "https://advertising-api.amazon.com"
         
         # Required scopes for Amazon Advertising APIs
-        # Expanded scopes to support both Sponsored Ads and DSP
+        # Note: DSP access is granted through the standard campaign_management scope
+        # when the user has DSP permissions on their account
         self.scopes = [
             "advertising::campaign_management",
-            "advertising::account_management",
-            "advertising::dsp_campaigns"
+            "advertising::account_management"
         ]
         self.scope = " ".join(self.scopes)
     
