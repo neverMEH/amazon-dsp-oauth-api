@@ -24,33 +24,50 @@ class DSPAMCService:
     async def list_dsp_advertisers(
         self,
         access_token: str,
-        profile_id: Optional[str] = None
-    ) -> List[Dict]:
+        profile_id: str,
+        start_index: int = 0,
+        count: int = 100,
+        advertiser_id_filter: Optional[List[str]] = None
+    ) -> Dict:
         """
         List all DSP advertisers accessible to the user
 
         **Endpoint Details:**
         - URL: GET https://advertising-api.amazon.com/dsp/advertisers
         - Method: GET
-        - Required Headers: Authorization, Amazon-Advertising-API-ClientId
-        - Optional: Amazon-Advertising-API-Scope (for profile-specific filtering)
+        - Required Headers: Authorization, Amazon-Advertising-API-ClientId, Amazon-Advertising-API-Scope
 
-        **Response Structure:**
-        Returns advertisers array with:
-        - advertiserId: Unique DSP entity ID
-        - advertiserName: Display name
-        - advertiserType: AGENCY or ADVERTISER
-        - advertiserStatus: ACTIVE, SUSPENDED, etc.
-        - countryCode: Two-letter country code
-        - currency: Three-letter currency code
-        - timeZone: IANA timezone
+        **Query Parameters:**
+        - startIndex: Starting index (default: 0)
+        - count: Number of results (max: 100, default: 100)
+        - advertiserIdFilter: Comma-separated advertiser IDs
+
+        **Response Structure (per API reference):**
+        ```json
+        {
+          "totalResults": 150,
+          "response": [
+            {
+              "advertiserId": "4728736040201",
+              "name": "Advertiser Name",
+              "currency": "USD",
+              "url": "www.example.com",
+              "country": "US",
+              "timezone": "America/New_York"
+            }
+          ]
+        }
+        ```
 
         Args:
-            access_token: Valid access token with dsp_campaigns scope
-            profile_id: Optional profile ID to filter advertisers
+            access_token: Valid access token
+            profile_id: Required profile ID for DSP access
+            start_index: Starting index for pagination (default: 0)
+            count: Number of results to return (max: 100, default: 100)
+            advertiser_id_filter: Optional list of advertiser IDs to filter
 
         Returns:
-            List of DSP advertiser dictionaries
+            Dictionary with totalResults and response array
 
         Raises:
             TokenRefreshError: If token is invalid
@@ -59,12 +76,19 @@ class DSPAMCService:
         headers = {
             "Authorization": f"Bearer {access_token}",
             "Amazon-Advertising-API-ClientId": settings.amazon_client_id,
+            "Amazon-Advertising-API-Scope": profile_id,  # Required header
             "Accept": "application/json"
         }
 
-        # Add profile scope if provided
-        if profile_id:
-            headers["Amazon-Advertising-API-Scope"] = profile_id
+        # Build query parameters
+        params = {
+            "startIndex": start_index,
+            "count": min(count, 100)  # Enforce max of 100
+        }
+
+        # Add advertiser filter if provided
+        if advertiser_id_filter:
+            params["advertiserIdFilter"] = ",".join(advertiser_id_filter)
 
         url = f"{self.base_url}/dsp/advertisers"
 
@@ -73,6 +97,7 @@ class DSPAMCService:
                 response = await client.get(
                     url,
                     headers=headers,
+                    params=params,
                     timeout=30.0
                 )
 
@@ -85,8 +110,8 @@ class DSPAMCService:
                         "User lacks DSP permissions - this is normal for non-DSP accounts",
                         profile_id=profile_id
                     )
-                    # Return empty list but indicate it's due to permissions
-                    return []  # User doesn't have DSP access
+                    # Return empty response structure
+                    return {"totalResults": 0, "response": []}
 
                 if response.status_code == 429:
                     retry_after = response.headers.get("Retry-After", "60")
@@ -103,15 +128,31 @@ class DSPAMCService:
                     raise Exception(f"API Error: {response.status_code}")
 
                 data = response.json()
-                advertisers = data.get("advertisers", [])
+
+                # Handle both possible response formats
+                # Standard format: {"totalResults": n, "response": [...]}
+                # Legacy format: {"advertisers": [...]}
+                if "response" in data:
+                    result = data  # Already in correct format
+                elif "advertisers" in data:
+                    # Convert legacy format
+                    advertisers = data.get("advertisers", [])
+                    result = {
+                        "totalResults": len(advertisers),
+                        "response": advertisers
+                    }
+                else:
+                    # Unknown format, return empty
+                    result = {"totalResults": 0, "response": []}
 
                 logger.info(
                     "Successfully retrieved DSP advertisers",
-                    advertiser_count=len(advertisers),
+                    total_results=result.get("totalResults", 0),
+                    returned_count=len(result.get("response", [])),
                     profile_id=profile_id
                 )
 
-                return advertisers
+                return result
 
         except httpx.TimeoutException:
             logger.error("DSP advertisers request timeout")
