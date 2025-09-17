@@ -74,7 +74,12 @@
       "Bash(gh pr list:*)",
       "Bash(paplay:*)",
       "Bash(aplay:*)",
-      "Bash(afplay:*)"
+      "Bash(afplay:*)",
+      "Bash(PYTHONPATH=/mnt/c/Users/Aeciu/Dev Work/amazon-dsp-oauth-api/backend python3 debug_dsp_access.py)",
+      "Bash(railway logs:*)",
+      "Bash(env)",
+      "mcp__railway__variable_set",
+      "mcp__railway__service_restart"
     ],
     "deny": [],
     "ask": []

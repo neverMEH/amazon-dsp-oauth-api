@@ -32,14 +32,19 @@ class AmazonOAuthService:
         self.api_base_url = "https://advertising-api.amazon.com"
         
         # Required scopes for Amazon Advertising APIs
-        self.scopes = [
-            "advertising::campaign_management",
-            "advertising::account_management",
-            "advertising::dsp_campaigns",
-            "advertising::reporting",
-            "advertising::amc:read"  # Added for AMC access
-        ]
-        self.scope = " ".join(self.scopes)
+        # Use scope from config or default to comprehensive list
+        if hasattr(settings, 'amazon_scope') and settings.amazon_scope:
+            self.scope = settings.amazon_scope
+            self.scopes = settings.amazon_scope.split()
+        else:
+            self.scopes = [
+                "advertising::campaign_management",
+                "advertising::account_management",
+                "advertising::dsp_campaigns",
+                "advertising::reporting",
+                "advertising::amc:read"  # Added for AMC access
+            ]
+            self.scope = " ".join(self.scopes)
     
     def generate_oauth_url(self, state: Optional[str] = None) -> Tuple[str, str]:
         """
@@ -62,8 +67,8 @@ class AmazonOAuthService:
             "state": state
         }
         
-        param_str = "&".join([f"{k}={v}" for k, v in params.items()])
-        auth_url = f"{self.auth_url}?{param_str}"
+        from urllib.parse import urlencode
+        auth_url = f"{self.auth_url}?{urlencode(params)}"
         
         logger.info(
             "Generated Amazon OAuth URL",
