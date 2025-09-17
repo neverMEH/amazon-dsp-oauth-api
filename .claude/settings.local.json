@@ -83,7 +83,8 @@
       "Bash(git show-branch:*)",
       "Bash(PYTHONPATH=/mnt/c/Users/Aeciu/Dev Work/amazon-dsp-oauth-api/backend python -m uvicorn app.main:app --port 8000 --reload)",
       "Bash(PYTHONPATH=/mnt/c/Users/Aeciu/Dev Work/amazon-dsp-oauth-api/backend python3 -m uvicorn app.main:app --port 8000 --reload)",
-      "Bash(for advertiser_id in \"592721594404477695\" \"580079666741846316\" \"589049828737374408\")"
+      "Bash(for advertiser_id in \"592721594404477695\" \"580079666741846316\" \"589049828737374408\")",
+      "Bash(PYTHONPATH=/mnt/c/Users/Aeciu/Dev Work/amazon-dsp-oauth-api/backend python3 sync_dsp_accounts.py)"
     ],
     "deny": [],
     "ask": []

@@ -2158,3 +2158,141 @@ async def get_dsp_seats_sync_history(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve sync history: {str(e)}"
         )
+
+
+@router.post("/sync")
+async def sync_all_accounts() -> Dict[str, Any]:
+    """
+    Sync all account types (Sponsored Ads, DSP, AMC) from Amazon API to database
+    Note: Clerk auth removed, using hardcoded user
+
+    Returns:
+        Dictionary with sync results including counts by account type
+    """
+    try:
+        # Since Clerk auth was removed, use hardcoded user ID
+        user_id = "52a86382-266b-4004-bfd9-6bd6a64026eb"
+        logger.info(f"Sync requested for user: {user_id}")
+
+        # Get tokens
+        from app.services.token_service import token_service
+        tokens = await token_service.get_decrypted_tokens()
+        if not tokens:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="No Amazon tokens found. Please connect your Amazon account."
+            )
+
+        access_token = tokens["access_token"]
+
+        # Use account sync service to fetch and save all account types
+        from app.services.account_sync_service import account_sync_service
+
+        # Fetch all account types from Amazon API
+        all_data = await account_sync_service._fetch_all_account_types(access_token)
+
+        # Process and save to database
+        result = await account_sync_service._process_all_account_types(
+            user_id=user_id,
+            account_data=all_data
+        )
+
+        logger.info(
+            "Successfully synced all account types",
+            user_id=user_id,
+            result=result
+        )
+
+        return {
+            "status": "success",
+            "message": "Account sync completed",
+            "result": result,
+            "data": {
+                "advertising_accounts": len(all_data.get("advertising_accounts", [])),
+                "dsp_advertisers": len(all_data.get("dsp_advertisers", [])),
+                "amc_instances": len(all_data.get("amc_instances", []))
+            }
+        }
+
+    except HTTPException:
+        raise
+    except TokenRefreshError as e:
+        logger.error("Token refresh failed during sync", user_id=user_id, error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token refresh failed. Please re-authenticate."
+        )
+    except Exception as e:
+        logger.error(
+            "Failed to sync accounts",
+            user_id=user_id,
+            error=str(e)
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to sync accounts: {str(e)}"
+        )
+
+
+@router.post("/sync-direct")
+async def sync_all_accounts_direct() -> Dict[str, Any]:
+    """
+    Direct sync endpoint without Clerk auth for testing
+    Syncs all account types to the hardcoded user
+    """
+    try:
+        # Use hardcoded user ID
+        user_id = "52a86382-266b-4004-bfd9-6bd6a64026eb"
+
+        # Get tokens
+        from app.services.token_service import token_service
+        tokens = await token_service.get_decrypted_tokens()
+        if not tokens:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="No Amazon tokens found. Please connect your Amazon account."
+            )
+
+        access_token = tokens["access_token"]
+
+        # Use account sync service to fetch and save all account types
+        from app.services.account_sync_service import account_sync_service
+
+        # Fetch all account types from Amazon API
+        all_data = await account_sync_service._fetch_all_account_types(access_token)
+
+        # Process and save to database
+        result = await account_sync_service._process_all_account_types(
+            user_id=user_id,
+            account_data=all_data
+        )
+
+        logger.info(
+            "Successfully synced all account types (direct)",
+            user_id=user_id,
+            result=result
+        )
+
+        return {
+            "status": "success",
+            "message": "Account sync completed (direct)",
+            "result": result,
+            "data": {
+                "advertising_accounts": len(all_data.get("advertising_accounts", [])),
+                "dsp_advertisers": len(all_data.get("dsp_advertisers", [])),
+                "amc_instances": len(all_data.get("amc_instances", []))
+            }
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            "Failed to sync accounts (direct)",
+            user_id=user_id,
+            error=str(e)
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to sync accounts: {str(e)}"
+        )

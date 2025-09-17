@@ -161,15 +161,10 @@ export const AmazonAccountsList: React.FC<AmazonAccountsListProps> = ({
     setIsSyncing(true);
 
     try {
-      const token = await getAuthToken();
-      if (!token) {
-        throw new Error('No authentication token available');
-      }
-
+      // No auth needed since Clerk was removed
       const response = await fetch('/api/v1/accounts/sync', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });
